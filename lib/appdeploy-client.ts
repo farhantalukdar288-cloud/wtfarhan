@@ -1,4 +1,4 @@
-export const backend = new Proxy({}, {
+const apiProxy = new Proxy({}, {
   get(_, prop) {
     return async (params: any = {}) => {
       const res = await fetch('/api/backend', {
@@ -11,3 +11,9 @@ export const backend = new Proxy({}, {
     };
   },
 }) as any;
+
+export const backend = apiProxy;
+export const client = apiProxy;
+export const createClient = () => apiProxy;
+export default apiProxy;
+
