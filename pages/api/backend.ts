@@ -47,11 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         body: JSON.stringify({ contents }),
       });
       const aiData = await aiRes.json();
-      const reply = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || 'I could not generate a reply right now.';
+      if (!aiRes.ok) throw new Error(aiData?.error?.message || 'Gemini API error');
+      const reply = aiData?.candidates?.at(0)?.content?.parts?.at(0)?.text || 'I could not generate a reply right now.';
 
       if (params.sessionId) {
         const existing = await sb(`kv_store?key=eq.chat:${encodeURIComponent(params.sessionId)}`);
-        const prevMsgs = existing?.[0]?.value?.messages || [];
+        const prevMsgs = existing?.at(0)?.value?.messages || [];
         const messages = [...prevMsgs, { role: 'user', content: text, createdAt: new Date().toISOString() }, { role: 'assistant', content: reply, createdAt: new Date().toISOString() }].slice(-50);
         await sb('kv_store', {
           method: 'POST',
@@ -120,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       await sb('kv_store', {
         method: 'POST',
-        body: JSON.stringify({ key: `track:${id}`, value: { id, title: String(params.title || 'Spotify Track').trim(), kind: match[1], spotifyId: match[2], spotifyUrl: params.url, createdAt: new Date().toISOString() } }),
+        body: JSON.stringify({ key: `track:${id}`, value: { id, title: String(params.title || 'Spotify Track').trim(), kind: match.at(1), spotifyId: match.at(2), spotifyUrl: params.url, createdAt: new Date().toISOString() } }),
       });
       return res.json({ ok: true });
     }
@@ -138,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       await sb('kv_store', {
         method: 'POST',
-        body: JSON.stringify({ key: `movie:${id}`, value: { id, title: String(params.title || 'YouTube Movie').trim(), youtubeId: match[1], youtubeUrl: params.url, createdAt: new Date().toISOString() } }),
+        body: JSON.stringify({ key: `movie:${id}`, value: { id, title: String(params.title || 'YouTube Movie').trim(), youtubeId: match.at(1), youtubeUrl: params.url, createdAt: new Date().toISOString() } }),
       });
       return res.json({ ok: true });
     }
