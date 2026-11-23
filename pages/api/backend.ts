@@ -45,9 +45,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { role: 'user', parts: [{ text: String(lastUserMsg) }] },
       ];
 
-      const aiRes = await fetch(`https://googleapis.com{GEMINI_KEY}`, {
+      const aiRes = await fetch('https://googleapis.com', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_KEY,
+        },
         body: JSON.stringify({ contents }),
       });
       const aiData = await aiRes.json();
