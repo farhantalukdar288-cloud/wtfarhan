@@ -1312,3 +1312,95 @@ body {
     transform: translateY(-5px);
   }
 }
+/* ==========================================================================
+   24. CLEAN LISTS, FEATURE ROWS & SUBTLE METADATA DIVIDERS
+   ========================================================================== */
+.aesthetic-list-clean {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.aesthetic-list-clean > li {
+  padding-block: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  transition:
+    border-color var(--duration-fast) var(--ease-snappy),
+    transform var(--duration-fast) var(--ease-snappy);
+}
+
+.aesthetic-list-clean > li:last-child {
+  border-bottom: 0;
+}
+
+.aesthetic-list-clean > li:hover {
+  border-bottom-color: rgba(214, 184, 122, 0.28);
+}
+
+/* ==========================================================================
+   25. DECORATIVE PINE ACCENTS, SOFT HALOS & GLASS POLISH
+   ========================================================================== */
+.aesthetic-halo-gold {
+  position: relative;
+}
+
+.aesthetic-halo-gold::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(214, 184, 122, 0.34),
+    transparent 55%,
+    rgba(159, 184, 108, 0.24)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.aesthetic-glass-panel {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* ==========================================================================
+   26. ADDITIONAL MOTION KEYFRAMES & SCROLL POLISH
+   ========================================================================== */
+.anim-fade-in {
+  animation: aestheticFadeIn var(--duration-med) var(--ease-silk) both;
+}
+
+.anim-float-orb {
+  animation: aestheticFloatOrb 7.2s var(--ease-silk) infinite;
+}
+
+@keyframes aestheticFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aestheticFloatOrb {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
