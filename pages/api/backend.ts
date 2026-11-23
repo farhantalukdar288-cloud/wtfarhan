@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MASTER_PROFILE_RULES, MASTER_PROFILE_SEED } from '../../backend/master-profile';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const GEMINI_KEY = process.env.GEMINI_API_KEY!;
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+const GEMINI_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const ADMIN_PASS = '20090401';
 
 async function sb(path: string, options: RequestInit = {}) {
@@ -34,40 +34,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // 1. AI Chat
     if (cleanPath === '/api/chat' && httpMethod === 'POST') {
+      if (!GEMINI_KEY) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY is missing in environment variables.' });
+      }
+
       const msgs = Array.isArray(body.messages) ? body.messages : [];
       const lastUserMsg = msgs.at(-1)?.content || '';
       const history = msgs.slice(0, -1).slice(-10);
 
       const contents = [
-        { role: 'user', parts: [{ text: `SYSTEM RULES:\n${MASTER_PROFILE_RULES}\n\nMASTER PROFILE ABOUT FARHAN:\n${MASTER_PROFILE_SEED}` }] },
-        { role: 'model', parts: [{ text: 'Understood. I will answer strictly as Farhan’s assistant using only these facts.' }] },
-        ...history.map((m: any) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content || '') }] })),
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `SYSTEM RULES:\n${MASTER_PROFILE_RULES}\n\nMASTER PROFILE ABOUT FARHAN:\n${MASTER_PROFILE_SEED}`,
+            },
+          ],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Understood. I will answer strictly as Farhan’s assistant using only these facts.' }],
+        },
+        ...history.map((m: any) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: String(m.content || '') }],
+        })),
         { role: 'user', parts: [{ text: String(lastUserMsg) }] },
       ];
 
-      const aiRes = await fetch('https://googleapis.com', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_KEY,
-        },
-        body: JSON.stringify({ contents }),
-      });
+      const aiRes = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_KEY,
+          },
+          body: JSON.stringify({ contents }),
+        }
+      );
+
       const aiData = await aiRes.json();
-      if (!aiRes.ok) throw new Error(aiData?.error?.message || 'Gemini API error');
-      const reply = aiData?.candidates?.at(0)?.content?.parts?.at(0)?.text || 'I could not generate a reply right now.';
+      if (!aiRes.ok) {
+        throw new Error(aiData?.error?.message || `Gemini API error (${aiRes.status})`);
+      }
+
+      const reply =
+        aiData?.candidates?.at(0)?.content?.parts?.at(0)?.text ||
+        'I could not generate a reply right now.';
 
       if (body.sessionId) {
-        const savedMessages = [...msgs, { role: 'assistant', content: reply, createdAt: new Date().toISOString() }].slice(-50);
+        const savedMessages = [
+          ...msgs,
+          { role: 'assistant', content: reply, createdAt: new Date().toISOString() },
+        ].slice(-50);
+
         await sb('kv_store', {
           method: 'POST',
           headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
           body: JSON.stringify({
             key: `chat:${body.sessionId}`,
-            value: { sessionId: body.sessionId, updatedAt: new Date().toISOString(), device: body.device || {}, messages: savedMessages },
+            value: {
+              sessionId: body.sessionId,
+              updatedAt: new Date().toISOString(),
+              device: body.device || {},
+              messages: savedMessages,
+            },
           }),
         });
       }
+
       return res.json({ text: reply, reply });
     }
 
@@ -78,7 +114,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         body: JSON.stringify({
           key: `visit:${id}`,
-          value: { id, sessionId: body.sessionId, startedAt: new Date().toISOString(), device: body.device || {} },
+          value: {
+            id,
+            sessionId: body.sessionId,
+            startedAt: new Date().toISOString(),
+            device: body.device || {},
+          },
         }),
       });
       return res.json({ ok: true });
@@ -98,7 +139,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         body: JSON.stringify({
           key: `note:${id}`,
-          value: { id, name: String(body.name || 'Anonymous').trim() || 'Anonymous', message: String(body.message || '').trim(), createdAt: new Date().toISOString() },
+          value: {
+            id,
+            name: String(body.name || 'Anonymous').trim() || 'Anonymous',
+            message: String(body.message || '').trim(),
+            createdAt: new Date().toISOString(),
+          },
         }),
       });
       return res.json({ ok: true });
@@ -114,20 +160,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 4. Spotify Music
     if (cleanPath === '/api/music' && httpMethod === 'GET') {
       const rows = await sb('kv_store?key=like.track:*');
-      const items = rows.map((r: any) => r.value).sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
+      const items = rows
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
       return res.json({ items, tracks: items });
     }
 
     if (cleanPath === '/api/music' && httpMethod === 'POST') {
       checkAdmin(body.password);
-      const match = String(body.url || '').match(/open\.spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)/);
+      const match = String(body.url || '').match(
+        /open\.spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)/
+      );
       if (!match) throw new Error('Invalid Spotify link.');
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       await sb('kv_store', {
         method: 'POST',
         body: JSON.stringify({
           key: `track:${id}`,
-          value: { id, title: String(body.title || 'Spotify Track').trim(), kind: match.at(1), spotifyId: match.at(2), spotifyUrl: body.url, createdAt: new Date().toISOString() },
+          value: {
+            id,
+            title: String(body.title || 'Spotify Track').trim(),
+            kind: match.at(1),
+            spotifyId: match.at(2),
+            spotifyUrl: body.url,
+            createdAt: new Date().toISOString(),
+          },
         }),
       });
       return res.json({ ok: true });
@@ -143,20 +200,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 5. YouTube Movies
     if (cleanPath === '/api/movies' && httpMethod === 'GET') {
       const rows = await sb('kv_store?key=like.movie:*');
-      const items = rows.map((r: any) => r.value).sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
+      const items = rows
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
       return res.json({ items, movies: items });
     }
 
     if (cleanPath === '/api/movies' && httpMethod === 'POST') {
       checkAdmin(body.password);
-      const match = String(body.url || '').match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+      const match = String(body.url || '').match(
+        /(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/
+      );
       if (!match) throw new Error('Invalid YouTube link.');
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       await sb('kv_store', {
         method: 'POST',
         body: JSON.stringify({
           key: `movie:${id}`,
-          value: { id, title: String(body.title || 'YouTube Movie').trim(), youtubeId: match.at(1), youtubeUrl: body.url, createdAt: new Date().toISOString() },
+          value: {
+            id,
+            title: String(body.title || 'YouTube Movie').trim(),
+            youtubeId: match.at(1),
+            youtubeUrl: body.url,
+            createdAt: new Date().toISOString(),
+          },
         }),
       });
       return res.json({ ok: true });
@@ -173,11 +240,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (cleanPath === '/api/admin' || cleanPath === '/api/admin-notes') {
       checkAdmin(body.password);
       const rows = await sb('kv_store');
-      const notes = rows.filter((r: any) => r.key.startsWith('note:')).map((r: any) => r.value).sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
-      const sessions = rows.filter((r: any) => r.key.startsWith('chat:')).map((r: any) => r.value).sort((a: any, b: any) => b.updatedAt.localeCompare(a.updatedAt));
-      const visits = rows.filter((r: any) => r.key.startsWith('visit:')).map((r: any) => r.value).sort((a: any, b: any) => b.startedAt.localeCompare(a.startedAt));
-      const tracks = rows.filter((r: any) => r.key.startsWith('track:')).map((r: any) => r.value).sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
-      const movies = rows.filter((r: any) => r.key.startsWith('movie:')).map((r: any) => r.value).sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
+      const notes = rows
+        .filter((r: any) => r.key.startsWith('note:'))
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) changes) => b.createdAt.localeCompare(a.createdAt));
+      const sessions = rows
+        .filter((r: any) => r.key.startsWith('chat:'))
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) => b.updatedAt.localeCompare(a.updatedAt));
+      const visits = rows
+        .filter((r: any) => r.key.startsWith('visit:'))
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) => b.startedAt.localeCompare(a.startedAt));
+      const tracks = rows
+        .filter((r: any) => r.key.startsWith('track:'))
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
+      const movies = rows
+        .filter((r: any) => r.key.startsWith('movie:'))
+        .map((r: any) => r.value)
+        .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
       return res.json({ notes, sessions, visits, tracks, movies });
     }
 
