@@ -209,3 +209,241 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+/* ==========================================================================
+   04. CONTAINER, GRID RHYTHM & SECTION ARCHITECTURE
+   ========================================================================== */
+.aesthetic-shell {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-inline: clamp(1rem, 4vw, 2.25rem);
+}
+
+.aesthetic-section {
+  padding-block: clamp(2.5rem, 6vw, 4.75rem);
+}
+
+.aesthetic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(1.1rem, 2.5vw, 1.75rem);
+}
+
+.aesthetic-grid-tight {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(0.85rem, 2vw, 1.25rem);
+}
+
+.aesthetic-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 2vw, 1.4rem);
+}
+
+.aesthetic-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ==========================================================================
+   05. NUMBERED CARDS (01 - 06), EYEBROWS & INTERACTIVE LINKS
+   ========================================================================== */
+.aesthetic-card-index {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  margin-bottom: 0.85rem;
+}
+
+.aesthetic-card-index::after {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-gold-strong), transparent);
+  transition: width var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-card:hover .aesthetic-card-index::after {
+  width: 42px;
+}
+
+.aesthetic-card-title {
+  margin: 0 0 0.55rem;
+  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.aesthetic-card-copy {
+  margin: 0 0 1.25rem;
+  font-size: 0.96rem;
+  line-height: 1.62;
+  color: var(--text-secondary);
+}
+
+.aesthetic-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--accent-olive);
+  text-decoration: none;
+  transition:
+    color var(--duration-fast) var(--ease-snappy),
+    transform var(--duration-fast) var(--ease-snappy);
+}
+
+.aesthetic-link:hover {
+  color: var(--accent-gold);
+}
+
+.aesthetic-link .aesthetic-arrow {
+  display: inline-block;
+  transition: transform var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-link:hover .aesthetic-arrow {
+  transform: translateX(5px);
+}
+
+/* ==========================================================================
+   06. AMBIENT GLOWS, DIVIDERS & FOOTER POLISH
+   ========================================================================== */
+.aesthetic-divider {
+  height: 1px;
+  width: 100%;
+  border: 0;
+  margin-block: clamp(1.75rem, 4vw, 3rem);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 184, 122, 0.22) 25%,
+    rgba(159, 184, 108, 0.28) 50%,
+    rgba(214, 184, 122, 0.22) 75%,
+    transparent 100%
+  );
+}
+
+.aesthetic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent-gold);
+  background: rgba(214, 184, 122, 0.09);
+  border: 1px solid rgba(214, 184, 122, 0.25);
+}
+
+.aesthetic-footer {
+  margin-top: clamp(3rem, 7vw, 5rem);
+  padding-block: 1.75rem 2.5rem;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* ==========================================================================
+   07. EXTENDED MOTION & KEYFRAME LIBRARY
+   ========================================================================== */
+.anim-stagger-1 { animation: aestheticFadeUp 520ms var(--ease-silk) 60ms both; }
+.anim-stagger-2 { animation: aestheticFadeUp 520ms var(--ease-silk) 120ms both; }
+.anim-stagger-3 { animation: aestheticFadeUp 520ms var(--ease-silk) 180ms both; }
+.anim-stagger-4 { animation: aestheticFadeUp 520ms var(--ease-silk) 240ms both; }
+.anim-stagger-5 { animation: aestheticFadeUp 520ms var(--ease-silk) 300ms both; }
+.anim-stagger-6 { animation: aestheticFadeUp 520ms var(--ease-silk) 360ms both; }
+
+.anim-float-slow {
+  animation: aestheticFloatSlow 6.5s var(--ease-silk) infinite;
+}
+
+.anim-pulse-gold {
+  animation: aestheticPulseGold 3.8s ease-in-out infinite;
+}
+
+.anim-shimmer-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.anim-shimmer-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 244, 214, 0.16),
+    transparent
+  );
+  animation: aestheticShimmer 4.5s var(--ease-silk) infinite;
+}
+
+@keyframes aestheticFloatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes aestheticPulseGold {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(214, 184, 122, 0);
+  }
+  50% {
+    box-shadow: 0 0 22px 2px rgba(214, 184, 122, 0.16);
+  }
+}
+
+@keyframes aestheticShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  55%, 100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ==========================================================================
+   08. RESPONSIVE BREAKPOINTS & TOUCH REFINEMENTS
+   ========================================================================== */
+@media (max-width: 767px) {
+  .aesthetic-hero {
+    padding-top: 2.5rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .aesthetic-card {
+    border-radius: var(--radius-md);
+    padding: 1.2rem;
+  }
+
+  .aesthetic-btn-primary,
+  .aesthetic-btn-secondary {
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .aesthetic-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+}
