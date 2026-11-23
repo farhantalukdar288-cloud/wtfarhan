@@ -1,12 +1,12 @@
 import type { AppProps } from 'next/app';
 import '../styles/global.css';
-import BubbleCharacter from '../components/BubbleCharacter';
+import NotebookWalker from '../components/NotebookWalker';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Component {...pageProps} />
-      <BubbleCharacter />
+      <NotebookWalker />
     </>
   );
 }
