@@ -1932,3 +1932,318 @@ body {
     max-width: 1280px;
   }
 }
+/* ==========================================================================
+   41. DROPDOWN MENUS, POPOVER PANELS & FLOATING CONTEXT BOXES
+   ========================================================================== */
+.aesthetic-popover {
+  position: relative;
+  display: inline-block;
+}
+
+.aesthetic-popover-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  z-index: 45;
+  padding: 0.45rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-pine-elevated);
+  border: 1px solid var(--border-gold);
+  box-shadow: var(--shadow-card), var(--glow-gold);
+  animation: aestheticPopIn var(--duration-fast) var(--ease-silk) both;
+}
+
+.aesthetic-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.58rem 0.8rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-snappy),
+    background-color var(--duration-fast) var(--ease-snappy);
+}
+
+.aesthetic-menu-item:hover {
+  color: var(--accent-gold);
+  background: rgba(214, 184, 122, 0.1);
+}
+
+/* ==========================================================================
+   42. CUSTOM CHECKBOXES, RADIOS, TOGGLE SWITCHES & RANGE SLIDERS
+   ========================================================================== */
+.aesthetic-check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.aesthetic-checkbox,
+.aesthetic-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-gold);
+  background: rgba(7, 12, 9, 0.9);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition:
+    background-color var(--duration-fast) var(--ease-snappy),
+    border-color var(--duration-fast) var(--ease-snappy),
+    box-shadow var(--duration-fast) var(--ease-snappy);
+}
+
+.aesthetic-checkbox {
+  border-radius: 5px;
+}
+
+.aesthetic-radio {
+  border-radius: 50%;
+}
+
+.aesthetic-checkbox:checked,
+.aesthetic-radio:checked {
+  background: linear-gradient(135deg, #e1c58b 0%, #c8a35a 100%);
+  border-color: rgba(255, 244, 214, 0.45);
+  box-shadow: 0 0 12px rgba(214, 184, 122, 0.25);
+}
+
+.aesthetic-checkbox:checked::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--text-inverse);
+  border-bottom: 2px solid var(--text-inverse);
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.aesthetic-radio:checked::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-inverse);
+}
+
+.aesthetic-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: rgba(238, 241, 236, 0.14);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-med) var(--ease-silk),
+    border-color var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: transform var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-switch.is-on,
+.aesthetic-switch[aria-checked="true"] {
+  background: rgba(214, 184, 122, 0.34);
+  border-color: var(--accent-gold);
+}
+
+.aesthetic-switch.is-on::after,
+.aesthetic-switch[aria-checked="true"]::after {
+  transform: translateX(20px);
+  background: var(--accent-gold);
+}
+
+/* ==========================================================================
+   43. TIMELINES, JOURNEY MILESTONES & CHRONICLE BLOCKS
+   ========================================================================== */
+.aesthetic-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.aesthetic-timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 1.5px;
+  background: linear-gradient(
+    180deg,
+    var(--accent-gold),
+    var(--accent-olive) 60%,
+    transparent
+  );
+}
+
+.aesthetic-timeline-item {
+  position: relative;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color var(--duration-med) var(--ease-silk),
+    transform var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -1.5rem;
+  top: 1.35rem;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(214, 184, 122, 0.45);
+  transform: translateX(-4px);
+}
+
+.aesthetic-timeline-item:hover {
+  border-color: var(--border-gold);
+  transform: translateX(4px);
+}
+
+.aesthetic-timeline-date {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-olive);
+  margin-bottom: 0.3rem;
+}
+
+/* ==========================================================================
+   44. POSITION, Z-INDEX & FLEX/GRID ALIGNMENT UTILITIES
+   ========================================================================== */
+.pos-relative { position: relative; }
+.pos-sticky-top { position: sticky; top: 5.5rem; }
+
+.z-10 { z-index: 10; }
+.z-20 { z-index: 20; }
+.z-30 { z-index: 30; }
+
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.9rem, 2vw, 1.35rem);
+}
+
+@media (max-width: 1023px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-2,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   45. MORE SMOOTH KEYFRAMES & AMBIENT MOTION PRESETS
+   ========================================================================== */
+.anim-glide-up {
+  animation: aestheticGlideUp 620ms var(--ease-silk) both;
+}
+
+.anim-pulse-halo {
+  animation: aestheticPulseHalo 4.2s ease-in-out infinite;
+}
+
+.anim-hover-lift {
+  transition:
+    transform var(--duration-med) var(--ease-silk),
+    box-shadow var(--duration-med) var(--ease-silk);
+}
+
+.anim-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card), var(--glow-gold);
+}
+
+@keyframes aestheticGlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aestheticPulseHalo {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(214, 184, 122, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(214, 184, 122, 0);
+  }
+}
+
+/* ==========================================================================
+   46. SUBTLE SCROLLBAR & SELECTION POLISH FOR DEEP SECTIONS
+   ========================================================================== */
+.aesthetic-scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 184, 122, 0.32) transparent;
+}
+
+.aesthetic-scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.aesthetic-scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(214, 184, 122, 0.28);
+  border-radius: var(--radius-pill);
+}
+
+.aesthetic-scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 184, 122, 0.5);
+}
