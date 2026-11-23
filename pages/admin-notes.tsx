@@ -1,8 +1,6 @@
-
 import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
-import { api } from '@appdeploy/client';
 
 type Note = {
   id: string;
@@ -25,6 +23,19 @@ type Movie = {
   createdAt: string;
 };
 
+async function callBackend(httpMethod: string, path: string, body: any = {}) {
+  const res = await fetch('/api/backend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ httpMethod, path, body }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || `Request failed (${res.status})`);
+  }
+  return data;
+}
+
 export default function AdminNotes() {
   const [password, setPassword] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
@@ -44,15 +55,15 @@ export default function AdminNotes() {
     setMessage('');
 
     try {
-      const [adminRes, musicRes, movieRes] = await Promise.all([
-        api.post('/api/admin', { password: pass }),
-        api.get('/api/music'),
-        api.get('/api/movies'),
+      const [adminData, musicData, movieData] = await Promise.all([
+        callBackend('POST', '/api/admin', { password: pass }),
+        callBackend('GET', '/api/music'),
+        callBackend('GET', '/api/movies'),
       ]);
 
-      setNotes(adminRes.data.notes || []);
-      setMusic(musicRes.data.items || []);
-      setMovies(movieRes.data.items || []);
+      setNotes(adminData.notes || []);
+      setMusic(musicData.items || musicData.tracks || []);
+      setMovies(movieData.items || movieData.movies || []);
       setLoggedIn(true);
     } catch (err: any) {
       setLoggedIn(false);
@@ -87,7 +98,7 @@ export default function AdminNotes() {
     setMessage('');
 
     try {
-      await api.post('/api/music', {
+      await callBackend('POST', '/api/music', {
         password,
         url: spotifyUrl.trim(),
       });
@@ -104,7 +115,7 @@ export default function AdminNotes() {
     if (!confirm('Remove this song?')) return;
 
     try {
-      await api.delete(`/api/music/${id}`, { password });
+      await callBackend('DELETE', `/api/music/${id}`, { password });
       setMusic(music.filter((item) => item.id !== id));
       setMessage('Song removed.');
     } catch (err: any) {
@@ -117,7 +128,7 @@ export default function AdminNotes() {
     setMessage('');
 
     try {
-      await api.post('/api/movies', {
+      await callBackend('POST', '/api/movies', {
         password,
         url: youtubeUrl.trim(),
         title: movieTitle.trim(),
@@ -136,7 +147,7 @@ export default function AdminNotes() {
     if (!confirm('Remove this video?')) return;
 
     try {
-      await api.delete(`/api/movies/${id}`, { password });
+      await callBackend('DELETE', `/api/movies/${id}`, { password });
       setMovies(movies.filter((item) => item.id !== id));
       setMessage('Video removed.');
     } catch (err: any) {
@@ -148,7 +159,7 @@ export default function AdminNotes() {
     if (!confirm('Delete this visitor note?')) return;
 
     try {
-      await api.delete(`/api/notes/${id}`, { password });
+      await callBackend('DELETE', `/api/notes/${id}`, { password });
       setNotes(notes.filter((item) => item.id !== id));
       setMessage('Note deleted.');
     } catch (err: any) {
