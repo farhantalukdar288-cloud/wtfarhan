@@ -1025,3 +1025,167 @@ body {
     max-width: 1240px;
   }
 }
+/* ==========================================================================
+   18. TOPBAR NAVIGATION, BRAND MARKS & SUBTLE HEADER POLISH
+   ========================================================================== */
+.aesthetic-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(8, 13, 10, 0.78);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(14px);
+  transition:
+    background-color var(--duration-med) var(--ease-silk),
+    border-color var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 64px;
+}
+
+.aesthetic-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  transition: color var(--duration-fast) var(--ease-snappy);
+}
+
+.aesthetic-brand:hover {
+  color: var(--accent-gold);
+}
+
+.aesthetic-nav-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.aesthetic-nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition:
+    color var(--duration-fast) var(--ease-snappy),
+    background-color var(--duration-fast) var(--ease-snappy);
+}
+
+.aesthetic-nav-link:hover,
+.aesthetic-nav-link.is-active {
+  color: var(--accent-gold);
+  background: rgba(214, 184, 122, 0.1);
+}
+
+/* ==========================================================================
+   19. MEDIA FRAMES, IMAGE POLISH & INTERACTIVE GALLERY CARDS
+   ========================================================================== */
+.aesthetic-media-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-pine-elevated);
+  box-shadow: var(--shadow-soft);
+}
+
+.aesthetic-media-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transition:
+    transform var(--duration-slow) var(--ease-silk),
+    filter var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-media-frame:hover img {
+  transform: scale(1.03);
+}
+
+.aesthetic-media-caption {
+  padding: 0.85rem 1.05rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  background: rgba(8, 13, 10, 0.72);
+}
+
+/* ==========================================================================
+   20. STATE UTILITIES, SPACING HELPERS & EXTRA KEYFRAMES
+   ========================================================================== */
+.is-disabled,
+[aria-disabled="true"],
+:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.text-gold {
+  color: var(--accent-gold);
+}
+
+.text-olive {
+  color: var(--accent-olive);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.mt-xs { margin-top: 0.5rem; }
+.mt-sm { margin-top: 0.85rem; }
+.mt-md { margin-top: 1.35rem; }
+.mt-lg { margin-top: 2.1rem; }
+
+.mb-xs { margin-bottom: 0.5rem; }
+.mb-sm { margin-bottom: 0.85rem; }
+.mb-md { margin-bottom: 1.35rem; }
+.mb-lg { margin-bottom: 2.1rem; }
+
+.anim-float-gentle {
+  animation: aestheticFloatGentle 5.4s var(--ease-silk) infinite;
+}
+
+.anim-glow-ring {
+  animation: aestheticGlowRing 3.6s ease-in-out infinite;
+}
+
+@keyframes aestheticFloatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes aestheticGlowRing {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(159, 184, 108, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(159, 184, 108, 0.14);
+  }
+}
