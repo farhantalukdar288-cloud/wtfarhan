@@ -1,3 +1,321 @@
-import Head from 'next/head'; import Link from 'next/link'; import { useEffect,useState } from 'react'; import { api,auth } from '@appdeploy/client'; type NoteItem={id:string;name:string;note:string;createdAt:string}; type MusicItem={id:string;title:string;spotifyId:string;spotifyUrl:string;createdAt:string};
-type MovieItem={id:string;title:string;youtubeId:string;youtubeUrl:string;createdAt:string};
-type ChatVisitItem={id:string;sessionId:string;firstVisitedAt:string;lastVisitedAt:string;visitCount:number;active:boolean;device?:DeviceInfo}; type ChatMessage={role:'user'|'assistant';text:string}; type DeviceInfo={label:string;type:string;model:string;os:string;browser:string;platform:string;mobile:boolean}; type ChatItem={id:string;sessionId:string;messages:ChatMessage[];createdAt:string;updatedAt:string;messageCount:number;active:boolean;device?:DeviceInfo}; export default function AdminNotes(){const[user,setUser]=useState<any>(null);const[items,setItems]=useState<NoteItem[]>([]);const[music,setMusic]=useState<MusicItem[]>([]);const[movies,setMovies]=useState<MovieItem[]>([]);const[visits,setVisits]=useState<ChatVisitItem[]>([]);const[chats,setChats]=useState<ChatItem[]>([]);const[selectedChat,setSelectedChat]=useState<string|null>(null);const[deviceOpen,setDeviceOpen]=useState<string|null>(null);const[visitDeviceOpen,setVisitDeviceOpen]=useState<string|null>(null);const[msg,setMsg]=useState('');const[musicMsg,setMusicMsg]=useState('');const[chatMsg,setChatMsg]=useState('');const[loading,setLoading]=useState(true);const[spotifyUrl,setSpotifyUrl]=useState('');const[savingMusic,setSavingMusic]=useState(false);const[youtubeUrl,setYoutubeUrl]=useState('');const[movieTitle,setMovieTitle]=useState('');const[movieMsg,setMovieMsg]=useState('');const[savingMovie,setSavingMovie]=useState(false);async function load(showSpinner=false){if(showSpinner)setLoading(true);try{const u=await auth.getUser();setUser(u);if(!u){setLoading(false);return;}const[n,m,c,v,mv]=await Promise.all([api.get('/api/admin/notes'),api.get('/api/music'),api.get('/api/admin/chat-logs'),api.get('/api/admin/chat-visits'),api.get('/api/movies')]);setItems(n.data.items||[]);setMusic(m.data.items||[]);setChats(c.data.items||[]);setVisits(v.data.items||[]);setMovies(mv.data.items||[]);}catch{setMsg('You are not authorized to view these private controls.');}finally{setLoading(false);}}useEffect(()=>{void load(true);},[]);useEffect(()=>{if(!user)return;const timer=window.setInterval(()=>void load(),5000);return()=>window.clearInterval(timer);},[user]);async function signIn(){try{await auth.signIn({scope:'openid email profile offline_access'});await load(true);}catch{setMsg('Sign-in was cancelled or failed.');}}async function removeNote(id:string){if(!window.confirm('Delete this note?'))return;try{await api.delete('/api/admin/notes',{params:{id}});setItems(items.filter(x=>x.id!==id));}catch{setMsg('Could not delete this note.');}}async function addMusic(e:React.FormEvent){e.preventDefault();setMusicMsg('');if(!spotifyUrl.trim()){setMusicMsg('Paste a Spotify Share Link or Track ID.');return;}setSavingMusic(true);try{await api.post('/api/admin/music',{spotifyUrl:spotifyUrl.trim()});setSpotifyUrl('');setMusicMsg('Added to My Current Playlist.');await load();}catch(err:any){setMusicMsg(err?.message||'Could not add that Spotify track.');}finally{setSavingMusic(false);}}async function removeMusic(id:string){if(!window.confirm('Remove this song from My Current Playlist?'))return;try{await api.delete('/api/admin/music',{params:{id}});setMusic(music.filter(x=>x.id!==id));setMusicMsg('Song removed.');}catch{setMusicMsg('Could not remove this song.');}}async function addMovie(e:React.FormEvent){e.preventDefault();setMovieMsg('');if(!youtubeUrl.trim()){setMovieMsg('Paste a YouTube video link.');return;}setSavingMovie(true);try{await api.post('/api/admin/movies',{youtubeUrl:youtubeUrl.trim(),title:movieTitle.trim()});setYoutubeUrl('');setMovieTitle('');setMovieMsg('Video added to Movies.');await load();}catch(err:any){setMovieMsg(err?.message||'Could not add that YouTube video.');}finally{setSavingMovie(false);}}async function removeMovie(id:string){if(!window.confirm('Remove this video from Movies?'))return;try{await api.delete('/api/admin/movies',{params:{id}});setMovies(movies.filter(x=>x.id!==id));setMovieMsg('Video removed.');}catch{setMovieMsg('Could not remove this video.');}}async function removeChat(id:string){if(!window.confirm('Delete this AI conversation?'))return;try{await api.delete('/api/admin/chat-logs',{params:{id}});setChats(chats.filter(x=>x.id!==id));if(selectedChat===id)setSelectedChat(null);if(deviceOpen===id)setDeviceOpen(null);setChatMsg('Conversation deleted.');}catch{setChatMsg('Could not delete this conversation.');}}const activeChat=chats.find(x=>x.id===selectedChat);return <><Head><title>Private Admin — FARHAN</title><link rel="manifest" href="/manifest.json" /></Head><main className="site"><nav className="nav"><Link href="/" className="brand">F<span>•</span></Link><span className="admin-badge">PRIVATE ADMIN</span></nav><section className="admin-page"><div className="eyebrow">PRIVATE ADMIN</div><h1>Website controls</h1>{loading?<p className="admin-muted">Checking access…</p>:!user?<div className="admin-login"><p>This page is private. Sign in with the owner account to continue.</p><button className="primary" onClick={signIn}>Sign in as owner →</button>{msg&&<p className="visitor-status">{msg}</p>}</div>:<><div className="admin-head"><span>{items.length} notes · {music.length} songs · {movies.length} movies · {chats.length} conversations · {visits.length} chat visits</span><button className="clear-chat" onClick={async()=>{await auth.signOut();setUser(null);setItems([]);setMusic([]);setChats([]);setMovies([]);setVisits([]);}}>Sign out</button></div><section className="chat-admin-section"><div className="music-admin-kicker">AI CONVERSATIONS</div><div className="chat-admin-layout"><div className="chat-admin-list">{chats.length?chats.map((item,index)=><div className={`chat-admin-card ${selectedChat===item.id?'selected':''}`} key={item.id}><button type="button" className="chat-admin-item" onClick={()=>setSelectedChat(item.id)}><div><strong>Conversation #{chats.length-index}</strong><span>{item.active?'● Active':'○ Saved'} · {item.messageCount} messages</span></div><time>{new Date(item.updatedAt).toLocaleString()}</time></button><div className="chat-device-row"><span className="chat-device-name">{item.device?.label||'Device not available'}</span><button type="button" className={`device-info-button ${deviceOpen===item.id?'open':''}`} onClick={()=>setDeviceOpen(deviceOpen===item.id?null:item.id)}>Device info <span>{deviceOpen===item.id?'−':'+'}</span></button></div>{deviceOpen===item.id&&<div className="device-info-panel"><div><span>MODEL</span><strong>{item.device?.model||'Not available'}</strong></div><div><span>TYPE</span><strong>{item.device?.type||'Unknown'}</strong></div><div><span>OS</span><strong>{item.device?.os||'Unknown'}</strong></div><div><span>BROWSER</span><strong>{item.device?.browser||'Unknown'}</strong></div><div><span>PLATFORM</span><strong>{item.device?.platform||'Not available'}</strong></div><div><span>MOBILE</span><strong>{item.device?.mobile?'Yes':'No'}</strong></div></div>}</div>):<div className="admin-empty">No AI conversations yet.</div>}</div><div className="chat-admin-viewer">{activeChat?<><div className="chat-admin-viewer-head"><div><strong>Conversation</strong><span>{activeChat.active?'● Active now':'○ Saved'} · {activeChat.messageCount} messages · {activeChat.device?.label||'Device unavailable'}</span></div><button className="delete-note" onClick={()=>removeChat(activeChat.id)}>Delete</button></div><div className="chat-admin-messages">{activeChat.messages.map((message,index)=><div key={index} className={`admin-chat-message ${message.role}`}><small>{message.role==='user'?'VISITOR':'AI'}</small><p>{message.text}</p></div>)}</div></>:<div className="admin-chat-placeholder">Select a conversation to read it here.</div>}</div></div><p className="device-admin-note">Device details are collected only from browser-provided information when available. No IP address, location, or device fingerprint is stored.</p>{chatMsg&&<p className="visitor-status">{chatMsg}</p>}</section><section className="chat-admin-section visit-admin-section"><div className="music-admin-kicker">CHAT VISITS</div><p className="visit-admin-intro">A visitor can start the chat and leave without sending a message. These visits are recorded separately from conversations.</p><div className="visit-admin-list">{visits.length?visits.map(item=><article className="visit-admin-card" key={item.id}><div className="visit-admin-card-head"><div><strong>{item.device?.label||'Device not available'}</strong><span>{item.active?'● Recently active':'○ Visit saved'} · {item.visitCount} {item.visitCount===1?'visit':'visits'} · {chats.some(chat=>chat.sessionId===item.sessionId)?'Conversation exists':'No message sent yet'}</span></div><time>{new Date(item.lastVisitedAt).toLocaleString()}</time></div><div className="visit-admin-actions"><span>First visit: {new Date(item.firstVisitedAt).toLocaleString()}</span><button type="button" className={`device-info-button ${visitDeviceOpen===item.sessionId?'open':''}`} onClick={()=>setVisitDeviceOpen(visitDeviceOpen===item.sessionId?null:item.sessionId)}>Device info <span>{visitDeviceOpen===item.sessionId?'−':'+'}</span></button></div>{visitDeviceOpen===item.sessionId&&<div className="device-info-panel"><div><span>MODEL</span><strong>{item.device?.model||'Not available'}</strong></div><div><span>TYPE</span><strong>{item.device?.type||'Unknown'}</strong></div><div><span>OS</span><strong>{item.device?.os||'Unknown'}</strong></div><div><span>BROWSER</span><strong>{item.device?.browser||'Unknown'}</strong></div><div><span>PLATFORM</span><strong>{item.device?.platform||'Not available'}</strong></div><div><span>MOBILE</span><strong>{item.device?.mobile?'Yes':'No'}</strong></div></div>}</article>):<div className="admin-empty">No chat visits recorded yet.</div>}</div></section><section className="music-admin-card"><div className="music-admin-kicker">MUSIC</div><h2>Add Spotify music</h2><p>Paste a Spotify Share Link or a 22-character Track ID. The song will appear automatically on My Current Playlist using Spotify's official Embed player.</p><form className="music-admin-form" onSubmit={addMusic}><label>SPOTIFY LINK OR TRACK ID<input value={spotifyUrl} onChange={e=>setSpotifyUrl(e.target.value)} placeholder="https://open.spotify.com/track/..." autoComplete="off"/></label><button className="primary" type="submit" disabled={savingMusic}>{savingMusic?'Adding…':'Add to playlist →'}</button></form>{musicMsg&&<p className="visitor-status">{musicMsg}</p>}<div className="music-admin-list">{music.length?music.map(item=><div className="music-admin-row" key={item.id}><div><strong>{item.title}</strong><small>{item.spotifyUrl}</small></div><button className="delete-note" onClick={()=>removeMusic(item.id)}>Remove</button></div>):<div className="admin-empty">No Spotify songs added yet.</div>}</div></section><section className="music-admin-card movies-admin-card"><div className="music-admin-kicker">MOVIES</div><h2>Manage YouTube videos</h2><p>Add a YouTube video link. Visitors can watch it here using YouTube’s official embed player.</p><form className="music-admin-form" onSubmit={addMovie}><label>VIDEO TITLE (OPTIONAL)<input value={movieTitle} onChange={e=>setMovieTitle(e.target.value)} maxLength={120} placeholder="Give it a title, or leave blank for auto-title" autoComplete="off"/></label><label>YOUTUBE VIDEO LINK<input value={youtubeUrl} onChange={e=>setYoutubeUrl(e.target.value)} placeholder="https://youtu.be/..." autoComplete="off"/></label><button className="primary" type="submit" disabled={savingMovie}>{savingMovie?'Adding…':'Add to Movies →'}</button></form>{movieMsg&&<p className="visitor-status">{movieMsg}</p>}<div className="music-admin-list">{movies.length?movies.map(item=><div className="music-admin-row" key={item.id}><div><strong>{item.title}</strong><small>{item.youtubeUrl}</small></div><button className="delete-note" onClick={()=>removeMovie(item.id)}>Remove</button></div>):<div className="admin-empty">No YouTube videos added yet.</div>}</div></section><section className="admin-notes-section"><div className="music-admin-kicker">VISITOR NOTES</div><div className="admin-list">{items.length?items.map(item=><article className="admin-note" key={item.id}><div><strong>{item.name}</strong><time>{new Date(item.createdAt).toLocaleString()}</time></div><p>{item.note}</p><button className="delete-note" onClick={()=>removeNote(item.id)}>Delete</button></article>):<div className="admin-empty">No visitor notes yet.</div>}</div></section>{msg&&<p className="visitor-status">{msg}</p>}</>}</section></main></>}
+
+import Head from 'next/head';
+import Link from 'next/link';
+import { useState } from 'react';
+import { api } from '@appdeploy/client';
+
+type Note = {
+  id: string;
+  name: string;
+  message: string;
+  createdAt: string;
+};
+
+type Music = {
+  id: string;
+  title: string;
+  spotifyUrl: string;
+  createdAt: string;
+};
+
+type Movie = {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+  createdAt: string;
+};
+
+export default function AdminNotes() {
+  const [password, setPassword] = useState('');
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [music, setMusic] = useState<Music[]>([]);
+  const [movies, setMovies] = useState<Movie[]>([]);
+
+  const [spotifyUrl, setSpotifyUrl] = useState('');
+  const [movieTitle, setMovieTitle] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+
+  async function loadData(pass = password) {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const [adminRes, musicRes, movieRes] = await Promise.all([
+        api.post('/api/admin', { password: pass }),
+        api.get('/api/music'),
+        api.get('/api/movies'),
+      ]);
+
+      setNotes(adminRes.data.notes || []);
+      setMusic(musicRes.data.items || []);
+      setMovies(movieRes.data.items || []);
+      setLoggedIn(true);
+    } catch (err: any) {
+      setLoggedIn(false);
+      setMessage(err?.message || 'Could not load admin data.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!password.trim()) {
+      setMessage('Enter your admin password.');
+      return;
+    }
+
+    await loadData(password.trim());
+  }
+
+  function signOut() {
+    setLoggedIn(false);
+    setPassword('');
+    setNotes([]);
+    setMusic([]);
+    setMovies([]);
+    setMessage('');
+  }
+
+  async function addMusic(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage('');
+
+    try {
+      await api.post('/api/music', {
+        password,
+        url: spotifyUrl.trim(),
+      });
+
+      setSpotifyUrl('');
+      setMessage('Song added successfully.');
+      await loadData();
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not add song.');
+    }
+  }
+
+  async function deleteMusic(id: string) {
+    if (!confirm('Remove this song?')) return;
+
+    try {
+      await api.delete(`/api/music/${id}`, { password });
+      setMusic(music.filter((item) => item.id !== id));
+      setMessage('Song removed.');
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not remove song.');
+    }
+  }
+
+  async function addMovie(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage('');
+
+    try {
+      await api.post('/api/movies', {
+        password,
+        url: youtubeUrl.trim(),
+        title: movieTitle.trim(),
+      });
+
+      setYoutubeUrl('');
+      setMovieTitle('');
+      setMessage('Video added successfully.');
+      await loadData();
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not add video.');
+    }
+  }
+
+  async function deleteMovie(id: string) {
+    if (!confirm('Remove this video?')) return;
+
+    try {
+      await api.delete(`/api/movies/${id}`, { password });
+      setMovies(movies.filter((item) => item.id !== id));
+      setMessage('Video removed.');
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not remove video.');
+    }
+  }
+
+  async function deleteNote(id: string) {
+    if (!confirm('Delete this visitor note?')) return;
+
+    try {
+      await api.delete(`/api/notes/${id}`, { password });
+      setNotes(notes.filter((item) => item.id !== id));
+      setMessage('Note deleted.');
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not delete note.');
+    }
+  }
+
+  return (
+    <>
+      <Head>
+        <title>Private Admin | FARHAN</title>
+      </Head>
+
+      <main className="site">
+        <nav className="nav">
+          <Link href="/" className="brand">
+            F<span>•</span>
+          </Link>
+          <span className="admin-badge">PRIVATE ADMIN</span>
+        </nav>
+
+        <section className="admin-page">
+          <div className="eyebrow">PRIVATE ADMIN</div>
+          <h1>Website controls</h1>
+
+          {!loggedIn ? (
+            <form className="admin-login" onSubmit={signIn}>
+              <p>Sign in with your admin password.</p>
+
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Admin password"
+                autoComplete="current-password"
+              />
+
+              <button className="primary" type="submit" disabled={loading}>
+                {loading ? 'Checking…' : 'Sign in →'}
+              </button>
+            </form>
+          ) : (
+            <>
+              <div className="admin-head">
+                <span>
+                  {notes.length} notes · {music.length} songs · {movies.length} videos
+                </span>
+
+                <button className="clear-chat" onClick={signOut}>
+                  Sign out
+                </button>
+              </div>
+
+              <section className="music-admin-card">
+                <div className="music-admin-kicker">MUSIC</div>
+                <h2>Add Spotify music</h2>
+
+                <form className="music-admin-form" onSubmit={addMusic}>
+                  <label>
+                    SPOTIFY LINK
+                    <input
+                      value={spotifyUrl}
+                      onChange={(e) => setSpotifyUrl(e.target.value)}
+                      placeholder="https://open.spotify.com/track/..."
+                    />
+                  </label>
+
+                  <button className="primary" type="submit">
+                    Add song →
+                  </button>
+                </form>
+
+                <div className="music-admin-list">
+                  {music.map((item) => (
+                    <div className="music-admin-row" key={item.id}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <small>{item.spotifyUrl}</small>
+                      </div>
+                      <button
+                        className="delete-note"
+                        onClick={() => deleteMusic(item.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="music-admin-card">
+                <div className="music-admin-kicker">MOVIES</div>
+                <h2>Add YouTube video</h2>
+
+                <form className="music-admin-form" onSubmit={addMovie}>
+                  <label>
+                    VIDEO TITLE
+                    <input
+                      value={movieTitle}
+                      onChange={(e) => setMovieTitle(e.target.value)}
+                      placeholder="Video title"
+                    />
+                  </label>
+
+                  <label>
+                    YOUTUBE LINK
+                    <input
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      placeholder="https://youtu.be/..."
+                    />
+                  </label>
+
+                  <button className="primary" type="submit">
+                    Add video →
+                  </button>
+                </form>
+
+                <div className="music-admin-list">
+                  {movies.map((item) => (
+                    <div className="music-admin-row" key={item.id}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <small>{item.youtubeUrl}</small>
+                      </div>
+                      <button
+                        className="delete-note"
+                        onClick={() => deleteMovie(item.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="admin-notes-section">
+                <div className="music-admin-kicker">VISITOR NOTES</div>
+
+                <div className="admin-list">
+                  {notes.map((item) => (
+                    <article className="admin-note" key={item.id}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <time>
+                          {new Date(item.createdAt).toLocaleString()}
+                        </time>
+                      </div>
+
+                      <p>{item.message}</p>
+
+                      <button
+                        className="delete-note"
+                        onClick={() => deleteNote(item.id)}
+                      >
+                        Delete
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+
+          {message && <p className="visitor-status">{message}</p>}
+        </section>
+      </main>
+    </>
+  );
+}
