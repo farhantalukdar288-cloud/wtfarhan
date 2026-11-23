@@ -1,161 +1,213 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 
-const CHARACTER_IMAGE_SRC = '/notebook-character.png';
+// Optional: put a transparent PNG/WebP/GIF at public/cat-character.png
+// If not found, the built-in cinematic cat renders automatically.
+const CUSTOM_CAT_IMAGE_SRC = '/cat-character.png';
 
-const QUIET_LINES = [
-  'Take your time.',
+// Possibility toggle:
+// false = messages only appear when you tap/click the cat
+// true  = also shows quiet messages occasionally on its own
+const ALLOW_AUTO_MESSAGES = false;
+
+const QUIET_CAT_LINES = [
+  'Purr... take your time.',
   'Still exploring?',
   'Quiet corner of the web.',
-  'Good to see you around.',
+  'Watching from the shadows.',
 ];
 
-const SECTION_LINES: Record<string, string[]> = {
+const SECTION_CAT_LINES: Record<string, string[]> = {
   '/': [
-    'Take your time.',
-    'Curious about the story behind this?',
+    'Purr... take your time.',
+    'Curious about this world?',
     'Quiet corner of the web.',
   ],
   '/chat': [
-    'Want to talk to my AI?',
+    'Want to talk to the AI?',
     'Ask whatever is on your mind.',
   ],
   '/about': [
-    'A few chapters of the story.',
+    'A few quiet chapters here.',
     'Still exploring?',
   ],
   '/contact': [
-    'You can always leave a note.',
+    'Leave a note if you like.',
     'Good to see you around.',
   ],
 };
+
+type CatMood = 'prowl' | 'stalk' | 'alert' | 'groom';
 
 export default function NotebookWalker() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const [pos, setPos] = useState({ x: 24, y: 150 });
+  const [pos, setPos] = useState({ x: 40, y: 180 });
   const [facing, setFacing] = useState<'left' | 'right'>('right');
-  const [isWalking, setIsWalking] = useState(true);
-  const [isNoticingVisitor, setIsNoticingVisitor] = useState(false);
+  const [mood, setMood] = useState<CatMood>('prowl');
+  const [moveDurationMs, setMoveDurationMs] = useState(2600);
   const [message, setMessage] = useState<string | null>(null);
+  const [useCustomImage, setUseCustomImage] = useState(true);
 
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Infinite cat movement loop: prowl -> pause/alert/groom -> prowl again forever
   useEffect(() => {
-    let moveTimer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+    let activeTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const pickNextSpot = () => {
-      if (typeof window === 'undefined') return;
-
-      const charW = 104;
-      const charH = 148;
-      const pad = 16;
-      const maxX = Math.max(pad, window.innerWidth - charW - pad);
-      const maxY = Math.max(pad + 64, window.innerHeight - charH - pad);
-
-      const targetX = Math.floor(pad + Math.random() * (maxX - pad));
-      const targetY = Math.floor(
-        pad + 64 + Math.random() * (maxY - (pad + 64))
-      );
-
-      setPos((prev) => {
-        setFacing(targetX >= prev.x ? 'right' : 'left');
-        return { x: targetX, y: targetY };
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        activeTimer = setTimeout(() => {
+          if (!cancelled) resolve();
+        }, ms);
       });
-      setIsWalking(true);
-      setIsNoticingVisitor(false);
 
-      const walkDuration = 3000 + Math.random() * 2400;
-      moveTimer = setTimeout(() => {
-        setIsWalking(false);
-        const noticeChance = Math.random() < 0.45;
-        setIsNoticingVisitor(noticeChance);
+    const pickScreenPoint = () => {
+      if (typeof window === 'undefined') return { x: 40, y: 180 };
+      const catW = 92;
+      const catH = 86;
+      const pad = 16;
+      const topSafe = 68;
+      const maxX = Math.max(pad, window.innerWidth - catW - pad);
+      const maxY = Math.max(topSafe, window.innerHeight - catH - pad);
 
-        const pauseDuration = 2400 + Math.random() * 2600;
-        moveTimer = setTimeout(pickNextSpot, pauseDuration);
-      }, walkDuration);
+      return {
+        x: Math.floor(pad + Math.random() * (maxX - pad)),
+        y: Math.floor(topSafe + Math.random() * (maxY - topSafe)),
+      };
     };
 
-    moveTimer = setTimeout(pickNextSpot, 900);
+    const runInfiniteCatCycle = async () => {
+      await sleep(500);
 
-    const handlePointer = () => {
-      if (Math.random() < 0.22) {
-        setIsNoticingVisitor(true);
-        setTimeout(() => setIsNoticingVisitor(false), 1800);
+      while (!cancelled) {
+        // 1. Prowl / walk to a new spot smoothly
+        const nextSpot = pickScreenPoint();
+        const walkMs = 2200 + Math.floor(Math.random() * 1800);
+
+        setMoveDurationMs(walkMs);
+        setMood('prowl');
+        setPos((prev) => {
+          setFacing(nextSpot.x >= prev.x ? 'right' : 'left');
+          return nextSpot;
+        });
+
+        await sleep(walkMs);
+        if (cancelled) break;
+
+        // 2. Brief cat-like pause: either alertly noticing surroundings/visitor or grooming/settling
+        const pauseRoll = Math.random();
+        if (pauseRoll < 0.45) {
+          setMood('alert');
+          await sleep(1100 + Math.floor(Math.random() * 900));
+        } else if (pauseRoll < 0.78) {
+          setMood('groom');
+          await sleep(1200 + Math.floor(Math.random() * 1000));
+        } else {
+          setMood('stalk');
+          await sleep(750 + Math.floor(Math.random() * 650));
+        }
+        if (cancelled) break;
+
+        // 3. Occasional quick subtle turn before next prowl
+        if (Math.random() < 0.5) {
+          setFacing((prev) => (prev === 'left' ? 'right' : 'left'));
+          await sleep(350);
+        }
       }
     };
 
-    window.addEventListener('pointerdown', handlePointer, { passive: true });
+    runInfiniteCatCycle();
 
     return () => {
-      clearTimeout(moveTimer);
-      window.removeEventListener('pointerdown', handlePointer);
+      cancelled = true;
+      if (activeTimer) clearTimeout(activeTimer);
     };
   }, []);
 
+  // Optional auto messages (off by default so messages mainly appear on tap)
   useEffect(() => {
-    let showTimer: ReturnType<typeof setTimeout>;
-    let hideTimer: ReturnType<typeof setTimeout>;
+    if (!ALLOW_AUTO_MESSAGES) return;
 
-    const scheduleMessage = () => {
-      const delayBeforeShow = 5500 + Math.random() * 6500;
-      showTimer = setTimeout(() => {
-        const pool = SECTION_LINES[router.pathname] || QUIET_LINES;
-        const combined = [...pool, ...QUIET_LINES];
-        const nextLine =
-          combined[Math.floor(Math.random() * combined.length)];
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-        setMessage(nextLine);
-        setIsNoticingVisitor(true);
+    const scheduleNext = () => {
+      const waitMs = 8500 + Math.floor(Math.random() * 8500);
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        const pool = SECTION_CAT_LINES[router.pathname] || QUIET_CAT_LINES;
+        const line = pool[Math.floor(Math.random() * pool.length)];
+        setMessage(line);
+        setMood('alert');
 
-        const visibleDuration = 3400;
-        hideTimer = setTimeout(() => {
+        timer = setTimeout(() => {
+          if (cancelled) return;
           setMessage(null);
-          setIsNoticingVisitor(false);
-          scheduleMessage();
-        }, visibleDuration);
-      }, delayBeforeShow);
+          scheduleNext();
+        }, 3200);
+      }, waitMs);
     };
 
-    scheduleMessage();
+    scheduleNext();
 
     return () => {
-      clearTimeout(showTimer);
-      clearTimeout(hideTimer);
+      cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [router.pathname]);
 
-  const handleCharacterTap = () => {
-    const pool = SECTION_LINES[router.pathname] || QUIET_LINES;
+  const handleCatTap = () => {
+    const pool = SECTION_CAT_LINES[router.pathname] || QUIET_CAT_LINES;
     const nextLine = pool[Math.floor(Math.random() * pool.length)];
+
     setMessage(nextLine);
-    setIsNoticingVisitor(true);
-    setTimeout(() => {
+    setMood('alert');
+
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+
+    hideTimeoutRef.current = setTimeout(() => {
       setMessage(null);
-      setIsNoticingVisitor(false);
-    }, 3000);
+    }, 3200);
   };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const isMoving = mood === 'prowl';
+  const isAlert = mood === 'alert';
 
   return (
     <div
       ref={containerRef}
-      onClick={handleCharacterTap}
+      onClick={handleCatTap}
       role="button"
       tabIndex={0}
-      aria-label="Notebook inspired character"
+      aria-label="Interactive cat companion"
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleCharacterTap();
+        if (e.key === 'Enter' || e.key === ' ') handleCatTap();
       }}
       style={{
         position: 'fixed',
         left: `${pos.x}px`,
         top: `${pos.y}px`,
         zIndex: 45,
-        width: '104px',
-        height: '148px',
+        width: '92px',
+        height: '86px',
         cursor: 'pointer',
         userSelect: 'none',
-        transition:
-          'left 3s cubic-bezier(0.22, 1, 0.36, 1), top 3s cubic-bezier(0.22, 1, 0.36, 1)',
+        transition: isMoving
+          ? `left ${moveDurationMs}ms cubic-bezier(0.25, 0.85, 0.35, 1), top ${moveDurationMs}ms cubic-bezier(0.25, 0.85, 0.35, 1)`
+          : 'none',
       }}
     >
       {message && (
@@ -166,14 +218,14 @@ export default function NotebookWalker() {
             left: '50%',
             transform: 'translateX(-50%)',
             marginBottom: '8px',
-            minWidth: '132px',
-            maxWidth: '185px',
+            minWidth: '136px',
+            maxWidth: '190px',
             padding: '8px 11px',
             borderRadius: '12px',
-            background: 'rgba(13, 22, 17, 0.92)',
-            border: '1px solid rgba(214, 184, 122, 0.38)',
-            boxShadow: '0 10px 26px rgba(0, 0, 0, 0.45)',
-            color: '#e8e4d8',
+            background: 'rgba(12, 21, 16, 0.94)',
+            border: '1px solid rgba(214, 184, 122, 0.42)',
+            boxShadow: '0 10px 26px rgba(0, 0, 0, 0.48)',
+            color: '#ece8dc',
             fontSize: '11.5px',
             lineHeight: 1.4,
             letterSpacing: '0.01em',
@@ -186,65 +238,296 @@ export default function NotebookWalker() {
       )}
 
       <div
-        className={isWalking ? 'nb-film-walk' : 'nb-film-idle'}
+        className={
+          mood === 'prowl'
+            ? 'cat-prowl'
+            : mood === 'groom'
+            ? 'cat-groom'
+            : mood === 'alert'
+            ? 'cat-alert'
+            : 'cat-stalk'
+        }
         style={{
           position: 'relative',
           width: '100%',
           height: '100%',
           transform: `scaleX(${facing === 'left' ? -1 : 1})`,
-          transition: 'transform 0.35s ease',
-          borderRadius: '14px',
-          overflow: 'hidden',
+          transition: 'transform 0.28s ease',
         }}
       >
-        <img
-          src={CHARACTER_IMAGE_SRC}
-          alt="Notebook inspired character"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center top',
-            mixBlendMode: 'lighten',
-            filter: isNoticingVisitor
-              ? 'contrast(1.06) saturate(1.04)'
-              : 'contrast(1.02)',
-            WebkitMaskImage:
-              'radial-gradient(ellipse 74% 82% at 50% 45%, #000 58%, rgba(0,0,0,0.55) 78%, transparent 100%)',
-            maskImage:
-              'radial-gradient(ellipse 74% 82% at 50% 45%, #000 58%, rgba(0,0,0,0.55) 78%, transparent 100%)',
-            transition: 'filter 0.35s ease',
-            display: 'block',
-          }}
-        />
+        {useCustomImage ? (
+          <img
+            src={CUSTOM_CAT_IMAGE_SRC}
+            alt="Cat companion"
+            onError={() => setUseCustomImage(false)}
+            style={{
+              width: '100%',
+              height: '78px',
+              objectFit: 'contain',
+              objectPosition: 'bottom center',
+              filter: isAlert
+                ? 'drop-shadow(0 6px 14px rgba(214, 184, 122, 0.24))'
+                : 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45))',
+              display: 'block',
+            }}
+          />
+        ) : (
+          <svg
+            viewBox="0 0 112 98"
+            width="92"
+            height="80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <ellipse
+              cx="57"
+              cy="90"
+              rx="29"
+              ry="5"
+              fill="rgba(0, 0, 0, 0.42)"
+            />
+
+            {/* Tail */}
+            <path
+              className={isMoving ? 'cat-tail-walk' : 'cat-tail-idle'}
+              d="M28 63C14 59 10 42 18 31"
+              stroke="#c9b89c"
+              strokeWidth="5.5"
+              strokeLinecap="round"
+            />
+
+            {/* Back legs */}
+            <rect
+              className={isMoving ? 'cat-paw-a' : ''}
+              x="31"
+              y="65"
+              width="7"
+              height="20"
+              rx="3.5"
+              fill="#a8977c"
+            />
+            <rect
+              className={isMoving ? 'cat-paw-b' : ''}
+              x="43"
+              y="65"
+              width="7"
+              height="20"
+              rx="3.5"
+              fill="#b8a78c"
+            />
+
+            {/* Front legs */}
+            <rect
+              className={isMoving ? 'cat-paw-b' : ''}
+              x="63"
+              y="65"
+              width="7"
+              height="20"
+              rx="3.5"
+              fill="#c9b89c"
+            />
+            <rect
+              className={isMoving ? 'cat-paw-a' : ''}
+              x="74"
+              y="65"
+              width="7"
+              height="20"
+              rx="3.5"
+              fill="#d8c8ae"
+            />
+
+            {/* Torso */}
+            <rect
+              x="28"
+              y="47"
+              width="57"
+              height="24"
+              rx="12"
+              fill="#c9b89c"
+            />
+            <path
+              d="M73 48C77 52 77 63 73 69"
+              stroke="#c9a259"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+
+            {/* Head */}
+            <g
+              className={isAlert ? 'cat-head-alert' : 'cat-head-idle'}
+              style={{ transformOrigin: '81px 39px' }}
+            >
+              <circle cx="81" cy="39" r="16" fill="#d6c6ac" />
+              <path d="M69 28L66 14L77 23Z" fill="#c9b89c" />
+              <path d="M85 23L93 13L94 28Z" fill="#c9b89c" />
+              <path d="M70 26L68 17L75 23Z" fill="#b88476" />
+              <path d="M86 23L91 16L92 26Z" fill="#b88476" />
+
+              <circle
+                cx="86"
+                cy="38"
+                r={isAlert ? '2.8' : '2.1'}
+                fill="#1b261f"
+              />
+              <circle cx="86.8" cy="37.2" r="0.85" fill="#f5efe2" />
+
+              <path d="M95 41L92 43.5L96 44Z" fill="#b88476" />
+              <path
+                d="M90 46L80 45M90 48L81 49"
+                stroke="#7d6e58"
+                strokeWidth="1.1"
+                strokeLinecap="round"
+              />
+            </g>
+          </svg>
+        )}
       </div>
 
       <style jsx>{`
-        .nb-film-idle {
-          animation: nbFilmBreathe 3.4s ease-in-out infinite;
+        .cat-stalk {
+          animation: catStalkBreathe 2.8s ease-in-out infinite;
         }
 
-        .nb-film-walk {
-          animation: nbFilmStride 1.15s ease-in-out infinite;
+        .cat-alert {
+          animation: catAlertHold 1.4s ease-in-out infinite;
         }
 
-        @keyframes nbFilmBreathe {
+        .cat-groom {
+          animation: catGroomBob 0.9s ease-in-out infinite;
+        }
+
+        .cat-prowl {
+          animation: catStepBob 0.58s ease-in-out infinite;
+        }
+
+        .cat-head-idle {
+          animation: catHeadScan 4.2s ease-in-out infinite;
+        }
+
+        .cat-head-alert {
+          animation: catHeadTilt 0.8s ease-in-out infinite;
+        }
+
+        .cat-tail-idle {
+          transform-origin: 28px 63px;
+          animation: catTailSlow 3.2s ease-in-out infinite;
+        }
+
+        .cat-tail-walk {
+          transform-origin: 28px 63px;
+          animation: catTailWalk 0.8s ease-in-out infinite;
+        }
+
+        .cat-paw-a {
+          transform-origin: center top;
+          animation: catPawSwingA 0.58s ease-in-out infinite;
+        }
+
+        .cat-paw-b {
+          transform-origin: center top;
+          animation: catPawSwingB 0.58s ease-in-out infinite;
+        }
+
+        @keyframes catStalkBreathe {
           0%,
           100% {
             transform: translateY(0px) scale(1);
           }
           50% {
-            transform: translateY(-2.5px) scale(1.01);
+            transform: translateY(-2px) scale(1.015);
           }
         }
 
-        @keyframes nbFilmStride {
+        @keyframes catAlertHold {
           0%,
           100% {
-            transform: translateY(0px) rotate(-1.2deg);
+            transform: translateY(-1px) scale(1.02);
           }
           50% {
-            transform: translateY(-4.5px) rotate(1.2deg);
+            transform: translateY(-2.5px) scale(1.03);
+          }
+        }
+
+        @keyframes catGroomBob {
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(1.5px) rotate(-2deg);
+          }
+        }
+
+        @keyframes catStepBob {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-3.5px);
+          }
+        }
+
+        @keyframes catHeadScan {
+          0%,
+          100% {
+            transform: rotate(0deg);
+          }
+          35% {
+            transform: rotate(-4deg);
+          }
+          70% {
+            transform: rotate(4deg);
+          }
+        }
+
+        @keyframes catHeadTilt {
+          0%,
+          100% {
+            transform: rotate(-3deg);
+          }
+          50% {
+            transform: rotate(3deg);
+          }
+        }
+
+        @keyframes catTailSlow {
+          0%,
+          100% {
+            transform: rotate(0deg);
+          }
+          50% {
+            transform: rotate(11deg);
+          }
+        }
+
+        @keyframes catTailWalk {
+          0%,
+          100% {
+            transform: rotate(-10deg);
+          }
+          50% {
+            transform: rotate(12deg);
+          }
+        }
+
+        @keyframes catPawSwingA {
+          0%,
+          100% {
+            transform: rotate(16deg);
+          }
+          50% {
+            transform: rotate(-16deg);
+          }
+        }
+
+        @keyframes catPawSwingB {
+          0%,
+          100% {
+            transform: rotate(-16deg);
+          }
+          50% {
+            transform: rotate(16deg);
           }
         }
       `}</style>
