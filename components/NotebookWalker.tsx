@@ -1,23 +1,44 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 
-// Optional: put a transparent PNG/WebP/GIF at public/cat-character.png
-// If not found, the built-in cinematic cat renders automatically.
+// ============================================================================
+// POSSIBILITIES & CONFIGURATION (Edit these values to customize behavior)
+// ============================================================================
+
+// 1. Custom image path in /public (PNG, WebP, or GIF).
+//    If missing or fails to load, the built-in animated cat automatically renders.
 const CUSTOM_CAT_IMAGE_SRC = '/cat-character.png';
 
-// Possibility toggle:
-// false = messages only appear when you tap/click the cat
-// true  = also shows quiet messages occasionally on its own
-const ALLOW_AUTO_MESSAGES = false;
+// 2. Movement behavior mode:
+//    - 'mixed'  : Roams across screen, pauses to groom/alert/sleep, occasionally notices pointer
+//    - 'roam'   : Continuously roams & pauses in an infinite natural cycle
+//    - 'follow' : Chases desktop cursor (falls back to roaming on touch-only screens)
+const BEHAVIOR_MODE: 'mixed' | 'roam' | 'follow' = 'mixed';
 
-const QUIET_CAT_LINES = [
+// 3. Message bubble trigger mode:
+//    - false : Messages ONLY appear when you tap/click the cat
+//    - true  : Also shows occasional quiet messages on its own
+const AUTO_MESSAGES = false;
+
+// 4. Cat coat accent palette (harmonized with pine-dark #080d0a & warm gold)
+const CAT_PALETTE = {
+  coatLight: '#dfd2bc',
+  coatMid: '#c7b599',
+  coatDark: '#9e8b70',
+  innerEar: '#c48979',
+  eyeDark: '#16211a',
+  eyeGlow: '#f6f1e4',
+  collarGold: '#c9a259',
+};
+
+const QUIET_LINES = [
   'Purr... take your time.',
-  'Still exploring?',
-  'Quiet corner of the web.',
-  'Watching from the shadows.',
+  'Still exploring this corner?',
+  'Quiet nights, steady steps.',
+  'Watching from the pine shadows.',
 ];
 
-const SECTION_CAT_LINES: Record<string, string[]> = {
+const ROUTE_LINES: Record<string, string[]> = {
   '/': [
     'Purr... take your time.',
     'Curious about this world?',
@@ -28,7 +49,7 @@ const SECTION_CAT_LINES: Record<string, string[]> = {
     'Ask whatever is on your mind.',
   ],
   '/about': [
-    'A few quiet chapters here.',
+    'A few chapters of the story.',
     'Still exploring?',
   ],
   '/contact': [
@@ -37,179 +58,318 @@ const SECTION_CAT_LINES: Record<string, string[]> = {
   ],
 };
 
-type CatMood = 'prowl' | 'stalk' | 'alert' | 'groom';
+// ============================================================================
+// TYPES & HELPERS
+// ============================================================================
+
+type CatState = 'walk' | 'stalk' | 'alert' | 'groom' | 'sleep';
+
+interface Position {
+  x: number;
+  y: number;
+}
+
+const CAT_WIDTH = 96;
+const CAT_HEIGHT = 88;
+const EDGE_PADDING = 16;
+const TOP_SAFE_AREA = 68;
+
+function clampToViewport(x: number, y: number): Position {
+  if (typeof window === 'undefined') {
+    return { x: 40, y: 180 };
+  }
+  const maxX = Math.max(EDGE_PADDING, window.innerWidth - CAT_WIDTH - EDGE_PADDING);
+  const maxY = Math.max(TOP_SAFE_AREA, window.innerHeight - CAT_HEIGHT - EDGE_PADDING);
+
+  return {
+    x: Math.min(Math.max(x, EDGE_PADDING), maxX),
+    y: Math.min(Math.max(y, TOP_SAFE_AREA), maxY),
+  };
+}
+
+function pickRandomScreenSpot(): Position {
+  if (typeof window === 'undefined') {
+    return { x: 40, y: 180 };
+  }
+  const maxX = Math.max(EDGE_PADDING, window.innerWidth - CAT_WIDTH - EDGE_PADDING);
+  const maxY = Math.max(TOP_SAFE_AREA, window.innerHeight - CAT_HEIGHT - EDGE_PADDING);
+
+  return {
+    x: Math.floor(EDGE_PADDING + Math.random() * (maxX - EDGE_PADDING)),
+    y: Math.floor(TOP_SAFE_AREA + Math.random() * (maxY - TOP_SAFE_AREA)),
+  };
+}
+
+function pickMessageForRoute(pathname: string): string {
+  const specific = ROUTE_LINES[pathname] || [];
+  const combined = specific.length > 0 ? [...specific, ...QUIET_LINES] : QUIET_LINES;
+  const idx = Math.floor(Math.random() * combined.length);
+  return combined[idx];
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 export default function NotebookWalker() {
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const [pos, setPos] = useState({ x: 40, y: 180 });
+  const [pos, setPos] = useState<Position>({ x: 42, y: 185 });
   const [facing, setFacing] = useState<'left' | 'right'>('right');
-  const [mood, setMood] = useState<CatMood>('prowl');
-  const [moveDurationMs, setMoveDurationMs] = useState(2600);
+  const [catState, setCatState] = useState<CatState>('walk');
+  const [glideMs, setGlideMs] = useState<number>(2500);
   const [message, setMessage] = useState<string | null>(null);
-  const [useCustomImage, setUseCustomImage] = useState(true);
+  const [useCustomImg, setUseCustomImg] = useState<boolean>(true);
 
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const posRef = useRef<Position>(pos);
+  posRef.current = pos;
 
-  // Infinite cat movement loop: prowl -> pause/alert/groom -> prowl again forever
+  const pointerRef = useRef<Position | null>(null);
+  const lastPointerMoveRef = useRef<number>(0);
+  const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track pointer position & touch activity for realistic feline awareness
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') {
+        pointerRef.current = {
+          x: e.clientX - CAT_WIDTH / 2,
+          y: e.clientY - CAT_HEIGHT / 2,
+        };
+        lastPointerMoveRef.current = Date.now();
+      }
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') {
+        pointerRef.current = null;
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, []);
+
+  // Keep cat inside viewport if window resizes or rotates
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setPos((prev) => clampToViewport(prev.x, prev.y));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Infinite cat life-cycle loop: roam, pause, groom, alert, sleep, or chase cursor
   useEffect(() => {
     let cancelled = false;
-    let activeTimer: ReturnType<typeof setTimeout> | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const sleep = (ms: number) =>
+    const wait = (ms: number) =>
       new Promise<void>((resolve) => {
-        activeTimer = setTimeout(() => {
+        timer = setTimeout(() => {
           if (!cancelled) resolve();
         }, ms);
       });
 
-    const pickScreenPoint = () => {
-      if (typeof window === 'undefined') return { x: 40, y: 180 };
-      const catW = 92;
-      const catH = 86;
-      const pad = 16;
-      const topSafe = 68;
-      const maxX = Math.max(pad, window.innerWidth - catW - pad);
-      const maxY = Math.max(topSafe, window.innerHeight - catH - pad);
+    const moveToward = (rawTarget: Position, duration: number, nextState: CatState) => {
+      const clamped = clampToViewport(rawTarget.x, rawTarget.y);
+      const dx = clamped.x - posRef.current.x;
 
-      return {
-        x: Math.floor(pad + Math.random() * (maxX - pad)),
-        y: Math.floor(topSafe + Math.random() * (maxY - topSafe)),
-      };
+      if (Math.abs(dx) > 4) {
+        setFacing(dx >= 0 ? 'right' : 'left');
+      }
+
+      setGlideMs(duration);
+      setCatState(nextState);
+      setPos(clamped);
     };
 
-    const runInfiniteCatCycle = async () => {
-      await sleep(500);
+    const runInfiniteCycle = async () => {
+      await wait(550);
 
       while (!cancelled) {
-        // 1. Prowl / walk to a new spot smoothly
-        const nextSpot = pickScreenPoint();
-        const walkMs = 2200 + Math.floor(Math.random() * 1800);
+        const now = Date.now();
+        const hasRecentMouse =
+          pointerRef.current !== null && now - lastPointerMoveRef.current < 4500;
 
-        setMoveDurationMs(walkMs);
-        setMood('prowl');
-        setPos((prev) => {
-          setFacing(nextSpot.x >= prev.x ? 'right' : 'left');
-          return nextSpot;
-        });
+        // Possibility A: Follow cursor mode or occasional mixed chase
+        if (
+          (BEHAVIOR_MODE === 'follow' && hasRecentMouse && pointerRef.current) ||
+          (BEHAVIOR_MODE === 'mixed' && hasRecentMouse && pointerRef.current && Math.random() < 0.35)
+        ) {
+          const target = pointerRef.current;
+          const dist = Math.hypot(
+            target.x - posRef.current.x,
+            target.y - posRef.current.y
+          );
 
-        await sleep(walkMs);
-        if (cancelled) break;
+          if (dist > 48) {
+            const stepDuration = Math.min(1800, Math.max(650, dist * 4.2));
+            moveToward(target, stepDuration, 'walk');
+            await wait(stepDuration);
+            if (cancelled) break;
+          } else {
+            setCatState('alert');
+            await wait(700);
+            if (cancelled) break;
+          }
+          continue;
+        }
 
-        // 2. Brief cat-like pause: either alertly noticing surroundings/visitor or grooming/settling
-        const pauseRoll = Math.random();
-        if (pauseRoll < 0.45) {
-          setMood('alert');
-          await sleep(1100 + Math.floor(Math.random() * 900));
-        } else if (pauseRoll < 0.78) {
-          setMood('groom');
-          await sleep(1200 + Math.floor(Math.random() * 1000));
-        } else {
-          setMood('stalk');
-          await sleep(750 + Math.floor(Math.random() * 650));
+        // Possibility B: Natural multi-step roam across the screen
+        const stepsInBout = 1 + Math.floor(Math.random() * 2);
+        for (let s = 0; s < stepsInBout; s++) {
+          if (cancelled) break;
+          const spot = pickRandomScreenSpot();
+          const duration = 2100 + Math.floor(Math.random() * 1900);
+          const gait: CatState = Math.random() < 0.65 ? 'walk' : 'stalk';
+
+          moveToward(spot, duration, gait);
+          await wait(duration);
         }
         if (cancelled) break;
 
-        // 3. Occasional quick subtle turn before next prowl
-        if (Math.random() < 0.5) {
+        // Possibility C: Authentic feline idle pauses (alert, groom, or brief sleep)
+        const roll = Math.random();
+        if (BEHAVIOR_MODE === 'roam') {
+          setCatState('alert');
+          await wait(700 + Math.floor(Math.random() * 600));
+        } else if (roll < 0.38) {
+          setCatState('alert');
+          await wait(1100 + Math.floor(Math.random() * 900));
+        } else if (roll < 0.72) {
+          setCatState('groom');
+          await wait(1300 + Math.floor(Math.random() * 1000));
+        } else {
+          setCatState('sleep');
+          await wait(1600 + Math.floor(Math.random() * 1400));
+        }
+        if (cancelled) break;
+
+        // Subtle head/body turn before setting off again
+        if (Math.random() < 0.45) {
           setFacing((prev) => (prev === 'left' ? 'right' : 'left'));
-          await sleep(350);
+          await wait(320);
         }
       }
     };
 
-    runInfiniteCatCycle();
-
-    return () => {
-      cancelled = true;
-      if (activeTimer) clearTimeout(activeTimer);
-    };
-  }, []);
-
-  // Optional auto messages (off by default so messages mainly appear on tap)
-  useEffect(() => {
-    if (!ALLOW_AUTO_MESSAGES) return;
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const scheduleNext = () => {
-      const waitMs = 8500 + Math.floor(Math.random() * 8500);
-      timer = setTimeout(() => {
-        if (cancelled) return;
-        const pool = SECTION_CAT_LINES[router.pathname] || QUIET_CAT_LINES;
-        const line = pool[Math.floor(Math.random() * pool.length)];
-        setMessage(line);
-        setMood('alert');
-
-        timer = setTimeout(() => {
-          if (cancelled) return;
-          setMessage(null);
-          scheduleNext();
-        }, 3200);
-      }, waitMs);
-    };
-
-    scheduleNext();
+    runInfiniteCycle();
 
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
+  }, []);
+
+  // Optional automatic quiet message bubble
+  useEffect(() => {
+    if (!AUTO_MESSAGES) return;
+
+    let cancelled = false;
+    let loopTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleAuto = () => {
+      const delay = 9000 + Math.floor(Math.random() * 9000);
+      loopTimer = setTimeout(() => {
+        if (cancelled) return;
+        setMessage(pickMessageForRoute(router.pathname));
+        setCatState((prev) => (prev === 'sleep' ? 'alert' : prev));
+
+        loopTimer = setTimeout(() => {
+          if (cancelled) return;
+          setMessage(null);
+          scheduleAuto();
+        }, 3200);
+      }, delay);
+    };
+
+    scheduleAuto();
+
+    return () => {
+      cancelled = true;
+      if (loopTimer) clearTimeout(loopTimer);
+    };
   }, [router.pathname]);
 
-  const handleCatTap = () => {
-    const pool = SECTION_CAT_LINES[router.pathname] || QUIET_CAT_LINES;
-    const nextLine = pool[Math.floor(Math.random() * pool.length)];
-
-    setMessage(nextLine);
-    setMood('alert');
-
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-    }
-
-    hideTimeoutRef.current = setTimeout(() => {
-      setMessage(null);
-    }, 3200);
-  };
-
+  // Cleanup tap message timer on unmount
   useEffect(() => {
     return () => {
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
       }
     };
   }, []);
 
-  const isMoving = mood === 'prowl';
-  const isAlert = mood === 'alert';
+  const triggerTapInteraction = () => {
+    const line = pickMessageForRoute(router.pathname);
+    setMessage(line);
+    setCatState('alert');
+
+    if (messageTimerRef.current) {
+      clearTimeout(messageTimerRef.current);
+    }
+
+    messageTimerRef.current = setTimeout(() => {
+      setMessage(null);
+    }, 3200);
+  };
+
+  const isMoving = catState === 'walk' || catState === 'stalk';
+  const isSleeping = catState === 'sleep';
+  const isAlert = catState === 'alert';
+
+  const bodyAnimClass =
+    catState === 'walk'
+      ? 'nw-cat-walk'
+      : catState === 'stalk'
+      ? 'nw-cat-stalk'
+      : catState === 'groom'
+      ? 'nw-cat-groom'
+      : catState === 'sleep'
+      ? 'nw-cat-sleep'
+      : 'nw-cat-alert';
 
   return (
     <div
-      ref={containerRef}
-      onClick={handleCatTap}
+      ref={rootRef}
+      onClick={triggerTapInteraction}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          triggerTapInteraction();
+        }
+      }}
       role="button"
       tabIndex={0}
       aria-label="Interactive cat companion"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleCatTap();
-      }}
       style={{
         position: 'fixed',
         left: `${pos.x}px`,
         top: `${pos.y}px`,
         zIndex: 45,
-        width: '92px',
-        height: '86px',
+        width: `${CAT_WIDTH}px`,
+        height: `${CAT_HEIGHT}px`,
         cursor: 'pointer',
         userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
         transition: isMoving
-          ? `left ${moveDurationMs}ms cubic-bezier(0.25, 0.85, 0.35, 1), top ${moveDurationMs}ms cubic-bezier(0.25, 0.85, 0.35, 1)`
+          ? `left ${glideMs}ms cubic-bezier(0.24, 0.84, 0.36, 1), top ${glideMs}ms cubic-bezier(0.24, 0.84, 0.36, 1)`
           : 'none',
       }}
     >
+      {/* Message bubble */}
       {message && (
         <div
           style={{
@@ -218,16 +378,16 @@ export default function NotebookWalker() {
             left: '50%',
             transform: 'translateX(-50%)',
             marginBottom: '8px',
-            minWidth: '136px',
-            maxWidth: '190px',
-            padding: '8px 11px',
+            minWidth: '140px',
+            maxWidth: '198px',
+            padding: '8px 12px',
             borderRadius: '12px',
-            background: 'rgba(12, 21, 16, 0.94)',
+            background: 'rgba(11, 20, 15, 0.94)',
             border: '1px solid rgba(214, 184, 122, 0.42)',
-            boxShadow: '0 10px 26px rgba(0, 0, 0, 0.48)',
+            boxShadow: '0 10px 26px rgba(0, 0, 0, 0.5)',
             color: '#ece8dc',
             fontSize: '11.5px',
-            lineHeight: 1.4,
+            lineHeight: 1.42,
             letterSpacing: '0.01em',
             textAlign: 'center',
             pointerEvents: 'none',
@@ -237,16 +397,27 @@ export default function NotebookWalker() {
         </div>
       )}
 
+      {/* Subtle sleep indicator when resting quietly */}
+      {isSleeping && !message && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-10px',
+            right: facing === 'right' ? '8px' : 'auto',
+            left: facing === 'left' ? '8px' : 'auto',
+            fontSize: '11px',
+            fontWeight: 600,
+            color: 'rgba(214, 184, 122, 0.85)',
+            pointerEvents: 'none',
+          }}
+        >
+          z z
+        </div>
+      )}
+
+      {/* Animated cat container */}
       <div
-        className={
-          mood === 'prowl'
-            ? 'cat-prowl'
-            : mood === 'groom'
-            ? 'cat-groom'
-            : mood === 'alert'
-            ? 'cat-alert'
-            : 'cat-stalk'
-        }
+        className={bodyAnimClass}
         style={{
           position: 'relative',
           width: '100%',
@@ -255,127 +426,165 @@ export default function NotebookWalker() {
           transition: 'transform 0.28s ease',
         }}
       >
-        {useCustomImage ? (
+        {useCustomImg ? (
           <img
             src={CUSTOM_CAT_IMAGE_SRC}
             alt="Cat companion"
-            onError={() => setUseCustomImage(false)}
+            onError={() => setUseCustomImg(false)}
             style={{
               width: '100%',
-              height: '78px',
+              height: '80px',
               objectFit: 'contain',
               objectPosition: 'bottom center',
               filter: isAlert
-                ? 'drop-shadow(0 6px 14px rgba(214, 184, 122, 0.24))'
-                : 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45))',
+                ? 'drop-shadow(0 6px 14px rgba(201, 162, 89, 0.25))'
+                : 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.48))',
               display: 'block',
             }}
           />
         ) : (
           <svg
-            viewBox="0 0 112 98"
-            width="92"
-            height="80"
+            viewBox="0 0 116 100"
+            width={CAT_WIDTH}
+            height="82"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
+            {/* Ground shadow */}
             <ellipse
-              cx="57"
-              cy="90"
-              rx="29"
+              cx="58"
+              cy="92"
+              rx="31"
               ry="5"
-              fill="rgba(0, 0, 0, 0.42)"
+              fill="rgba(0, 0, 0, 0.44)"
             />
 
             {/* Tail */}
             <path
-              className={isMoving ? 'cat-tail-walk' : 'cat-tail-idle'}
-              d="M28 63C14 59 10 42 18 31"
-              stroke="#c9b89c"
+              className={isMoving ? 'nw-tail-walk' : 'nw-tail-idle'}
+              d="M28 64C14 60 10 42 19 31"
+              stroke={CAT_PALETTE.coatMid}
               strokeWidth="5.5"
               strokeLinecap="round"
             />
 
-            {/* Back legs */}
+            {/* Hind legs */}
             <rect
-              className={isMoving ? 'cat-paw-a' : ''}
+              className={isMoving ? 'nw-leg-a' : ''}
               x="31"
-              y="65"
-              width="7"
+              y="66"
+              width="7.5"
               height="20"
-              rx="3.5"
-              fill="#a8977c"
+              rx="3.75"
+              fill={CAT_PALETTE.coatDark}
             />
             <rect
-              className={isMoving ? 'cat-paw-b' : ''}
+              className={isMoving ? 'nw-leg-b' : ''}
               x="43"
-              y="65"
-              width="7"
+              y="66"
+              width="7.5"
               height="20"
-              rx="3.5"
-              fill="#b8a78c"
+              rx="3.75"
+              fill={CAT_PALETTE.coatMid}
             />
 
             {/* Front legs */}
             <rect
-              className={isMoving ? 'cat-paw-b' : ''}
-              x="63"
-              y="65"
-              width="7"
+              className={isMoving ? 'nw-leg-b' : ''}
+              x="64"
+              y="66"
+              width="7.5"
               height="20"
-              rx="3.5"
-              fill="#c9b89c"
+              rx="3.75"
+              fill={CAT_PALETTE.coatMid}
             />
             <rect
-              className={isMoving ? 'cat-paw-a' : ''}
-              x="74"
-              y="65"
-              width="7"
+              className={isMoving ? 'nw-leg-a' : ''}
+              x="75"
+              y="66"
+              width="7.5"
               height="20"
-              rx="3.5"
-              fill="#d8c8ae"
+              rx="3.75"
+              fill={CAT_PALETTE.coatLight}
             />
 
             {/* Torso */}
             <rect
               x="28"
               y="47"
-              width="57"
+              width="58"
               height="24"
               rx="12"
-              fill="#c9b89c"
+              fill={CAT_PALETTE.coatMid}
             />
+
+            {/* Subtle gold collar accent */}
             <path
-              d="M73 48C77 52 77 63 73 69"
-              stroke="#c9a259"
-              strokeWidth="2.5"
+              d="M74 48C78 52 78 64 74 70"
+              stroke={CAT_PALETTE.collarGold}
+              strokeWidth="2.4"
               strokeLinecap="round"
             />
 
             {/* Head */}
             <g
-              className={isAlert ? 'cat-head-alert' : 'cat-head-idle'}
-              style={{ transformOrigin: '81px 39px' }}
+              className={isAlert ? 'nw-head-alert' : 'nw-head-idle'}
+              style={{ transformOrigin: '82px 39px' }}
             >
-              <circle cx="81" cy="39" r="16" fill="#d6c6ac" />
-              <path d="M69 28L66 14L77 23Z" fill="#c9b89c" />
-              <path d="M85 23L93 13L94 28Z" fill="#c9b89c" />
-              <path d="M70 26L68 17L75 23Z" fill="#b88476" />
-              <path d="M86 23L91 16L92 26Z" fill="#b88476" />
+              <circle cx="82" cy="39" r="16.5" fill={CAT_PALETTE.coatLight} />
 
-              <circle
-                cx="86"
-                cy="38"
-                r={isAlert ? '2.8' : '2.1'}
-                fill="#1b261f"
-              />
-              <circle cx="86.8" cy="37.2" r="0.85" fill="#f5efe2" />
-
-              <path d="M95 41L92 43.5L96 44Z" fill="#b88476" />
+              {/* Left & right ears */}
               <path
-                d="M90 46L80 45M90 48L81 49"
-                stroke="#7d6e58"
-                strokeWidth="1.1"
+                d="M70 28L67 13L78 23Z"
+                fill={CAT_PALETTE.coatMid}
+              />
+              <path
+                d="M86 23L94 12L95 28Z"
+                fill={CAT_PALETTE.coatMid}
+              />
+              <path
+                d="M71 26L69 16L76 23Z"
+                fill={CAT_PALETTE.innerEar}
+              />
+              <path
+                d="M87 23L92 15L93 26Z"
+                fill={CAT_PALETTE.innerEar}
+              />
+
+              {/* Eye (open, alert, or closed when sleeping) */}
+              {isSleeping ? (
+                <path
+                  d="M84 39Q87.5 41.5 91 39"
+                  stroke={CAT_PALETTE.eyeDark}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              ) : (
+                <>
+                  <circle
+                    cx="87.5"
+                    cy="38"
+                    r={isAlert ? '2.9' : '2.2'}
+                    fill={CAT_PALETTE.eyeDark}
+                  />
+                  <circle
+                    cx="88.3"
+                    cy="37.1"
+                    r="0.85"
+                    fill={CAT_PALETTE.eyeGlow}
+                  />
+                </>
+              )}
+
+              {/* Nose & whiskers */}
+              <path
+                d="M96.5 41L93.5 43.5L97.5 44.5Z"
+                fill={CAT_PALETTE.innerEar}
+              />
+              <path
+                d="M91 46.5L81 45.5M91 48.5L82 49.5"
+                stroke={CAT_PALETTE.coatDark}
+                strokeWidth="1.15"
                 strokeLinecap="round"
               />
             </g>
@@ -383,82 +592,57 @@ export default function NotebookWalker() {
         )}
       </div>
 
+      {/* Infinite CSS animations */}
       <style jsx>{`
-        .cat-stalk {
-          animation: catStalkBreathe 2.8s ease-in-out infinite;
+        .nw-cat-walk {
+          animation: nwWalkBob 0.56s ease-in-out infinite;
         }
 
-        .cat-alert {
-          animation: catAlertHold 1.4s ease-in-out infinite;
+        .nw-cat-stalk {
+          animation: nwStalkBob 0.92s ease-in-out infinite;
         }
 
-        .cat-groom {
-          animation: catGroomBob 0.9s ease-in-out infinite;
+        .nw-cat-alert {
+          animation: nwAlertPulse 1.35s ease-in-out infinite;
         }
 
-        .cat-prowl {
-          animation: catStepBob 0.58s ease-in-out infinite;
+        .nw-cat-groom {
+          animation: nwGroomTilt 0.85s ease-in-out infinite;
         }
 
-        .cat-head-idle {
-          animation: catHeadScan 4.2s ease-in-out infinite;
+        .nw-cat-sleep {
+          animation: nwSleepBreath 3.4s ease-in-out infinite;
         }
 
-        .cat-head-alert {
-          animation: catHeadTilt 0.8s ease-in-out infinite;
+        .nw-head-idle {
+          animation: nwHeadLook 4.4s ease-in-out infinite;
         }
 
-        .cat-tail-idle {
-          transform-origin: 28px 63px;
-          animation: catTailSlow 3.2s ease-in-out infinite;
+        .nw-head-alert {
+          animation: nwHeadPerk 0.75s ease-in-out infinite;
         }
 
-        .cat-tail-walk {
-          transform-origin: 28px 63px;
-          animation: catTailWalk 0.8s ease-in-out infinite;
+        .nw-tail-idle {
+          transform-origin: 28px 64px;
+          animation: nwTailSwaySlow 3.1s ease-in-out infinite;
         }
 
-        .cat-paw-a {
+        .nw-tail-walk {
+          transform-origin: 28px 64px;
+          animation: nwTailSwayFast 0.78s ease-in-out infinite;
+        }
+
+        .nw-leg-a {
           transform-origin: center top;
-          animation: catPawSwingA 0.58s ease-in-out infinite;
+          animation: nwPawA 0.56s ease-in-out infinite;
         }
 
-        .cat-paw-b {
+        .nw-leg-b {
           transform-origin: center top;
-          animation: catPawSwingB 0.58s ease-in-out infinite;
+          animation: nwPawB 0.56s ease-in-out infinite;
         }
 
-        @keyframes catStalkBreathe {
-          0%,
-          100% {
-            transform: translateY(0px) scale(1);
-          }
-          50% {
-            transform: translateY(-2px) scale(1.015);
-          }
-        }
-
-        @keyframes catAlertHold {
-          0%,
-          100% {
-            transform: translateY(-1px) scale(1.02);
-          }
-          50% {
-            transform: translateY(-2.5px) scale(1.03);
-          }
-        }
-
-        @keyframes catGroomBob {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(1.5px) rotate(-2deg);
-          }
-        }
-
-        @keyframes catStepBob {
+        @keyframes nwWalkBob {
           0%,
           100% {
             transform: translateY(0px);
@@ -468,30 +652,70 @@ export default function NotebookWalker() {
           }
         }
 
-        @keyframes catHeadScan {
+        @keyframes nwStalkBob {
+          0%,
+          100% {
+            transform: translateY(0.5px);
+          }
+          50% {
+            transform: translateY(-2px);
+          }
+        }
+
+        @keyframes nwAlertPulse {
+          0%,
+          100% {
+            transform: translateY(-1px) scale(1.015);
+          }
+          50% {
+            transform: translateY(-2.5px) scale(1.03);
+          }
+        }
+
+        @keyframes nwGroomTilt {
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(1.5px) rotate(-2.5deg);
+          }
+        }
+
+        @keyframes nwSleepBreath {
+          0%,
+          100% {
+            transform: translateY(1px) scale(1);
+          }
+          50% {
+            transform: translateY(-1px) scale(1.02);
+          }
+        }
+
+        @keyframes nwHeadLook {
           0%,
           100% {
             transform: rotate(0deg);
           }
           35% {
-            transform: rotate(-4deg);
+            transform: rotate(-4.5deg);
           }
           70% {
-            transform: rotate(4deg);
+            transform: rotate(4.5deg);
           }
         }
 
-        @keyframes catHeadTilt {
+        @keyframes nwHeadPerk {
           0%,
           100% {
             transform: rotate(-3deg);
           }
           50% {
-            transform: rotate(3deg);
+            transform: rotate(3.5deg);
           }
         }
 
-        @keyframes catTailSlow {
+        @keyframes nwTailSwaySlow {
           0%,
           100% {
             transform: rotate(0deg);
@@ -501,7 +725,7 @@ export default function NotebookWalker() {
           }
         }
 
-        @keyframes catTailWalk {
+        @keyframes nwTailSwayFast {
           0%,
           100% {
             transform: rotate(-10deg);
@@ -511,7 +735,7 @@ export default function NotebookWalker() {
           }
         }
 
-        @keyframes catPawSwingA {
+        @keyframes nwPawA {
           0%,
           100% {
             transform: rotate(16deg);
@@ -521,7 +745,7 @@ export default function NotebookWalker() {
           }
         }
 
-        @keyframes catPawSwingB {
+        @keyframes nwPawB {
           0%,
           100% {
             transform: rotate(-16deg);
