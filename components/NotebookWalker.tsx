@@ -6,8 +6,11 @@ import { useRouter } from 'next/router';
 // ============================================================================
 
 // 1. Custom image path in /public (PNG, WebP, or GIF).
-//    If missing or fails to load, the built-in animated cat automatically renders.
 const CUSTOM_CAT_IMAGE_SRC = '/cat-character.png';
+
+// Set to true ONLY if /public/cat-character.png exists and loads properly.
+// Keep false to always render the clean built-in animated cat without broken icon.
+const USE_CUSTOM_IMAGE_BY_DEFAULT = false;
 
 // 2. Movement behavior mode:
 //    - 'mixed'  : Roams across screen, pauses to groom/alert/sleep, occasionally notices pointer
@@ -120,7 +123,7 @@ export default function NotebookWalker() {
   const [catState, setCatState] = useState<CatState>('walk');
   const [glideMs, setGlideMs] = useState<number>(2500);
   const [message, setMessage] = useState<string | null>(null);
-  const [useCustomImg, setUseCustomImg] = useState<boolean>(true);
+  const [useCustomImg, setUseCustomImg] = useState<boolean>(USE_CUSTOM_IMAGE_BY_DEFAULT);
 
   const posRef = useRef<Position>(pos);
   posRef.current = pos;
@@ -129,7 +132,6 @@ export default function NotebookWalker() {
   const lastPointerMoveRef = useRef<number>(0);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Track pointer position & touch activity for realistic feline awareness
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -158,7 +160,6 @@ export default function NotebookWalker() {
     };
   }, []);
 
-  // Keep cat inside viewport if window resizes or rotates
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -170,7 +171,6 @@ export default function NotebookWalker() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Infinite cat life-cycle loop: roam, pause, groom, alert, sleep, or chase cursor
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -203,10 +203,12 @@ export default function NotebookWalker() {
         const hasRecentMouse =
           pointerRef.current !== null && now - lastPointerMoveRef.current < 4500;
 
-        // Possibility A: Follow cursor mode or occasional mixed chase
         if (
           (BEHAVIOR_MODE === 'follow' && hasRecentMouse && pointerRef.current) ||
-          (BEHAVIOR_MODE === 'mixed' && hasRecentMouse && pointerRef.current && Math.random() < 0.35)
+          (BEHAVIOR_MODE === 'mixed' &&
+            hasRecentMouse &&
+            pointerRef.current &&
+            Math.random() < 0.35)
         ) {
           const target = pointerRef.current;
           const dist = Math.hypot(
@@ -227,7 +229,6 @@ export default function NotebookWalker() {
           continue;
         }
 
-        // Possibility B: Natural multi-step roam across the screen
         const stepsInBout = 1 + Math.floor(Math.random() * 2);
         for (let s = 0; s < stepsInBout; s++) {
           if (cancelled) break;
@@ -240,7 +241,6 @@ export default function NotebookWalker() {
         }
         if (cancelled) break;
 
-        // Possibility C: Authentic feline idle pauses (alert, groom, or brief sleep)
         const roll = Math.random();
         if (BEHAVIOR_MODE === 'roam') {
           setCatState('alert');
@@ -257,7 +257,6 @@ export default function NotebookWalker() {
         }
         if (cancelled) break;
 
-        // Subtle head/body turn before setting off again
         if (Math.random() < 0.45) {
           setFacing((prev) => (prev === 'left' ? 'right' : 'left'));
           await wait(320);
@@ -273,7 +272,6 @@ export default function NotebookWalker() {
     };
   }, []);
 
-  // Optional automatic quiet message bubble
   useEffect(() => {
     if (!AUTO_MESSAGES) return;
 
@@ -303,7 +301,6 @@ export default function NotebookWalker() {
     };
   }, [router.pathname]);
 
-  // Cleanup tap message timer on unmount
   useEffect(() => {
     return () => {
       if (messageTimerRef.current) {
@@ -369,7 +366,6 @@ export default function NotebookWalker() {
           : 'none',
       }}
     >
-      {/* Message bubble */}
       {message && (
         <div
           style={{
@@ -397,7 +393,6 @@ export default function NotebookWalker() {
         </div>
       )}
 
-      {/* Subtle sleep indicator when resting quietly */}
       {isSleeping && !message && (
         <div
           style={{
@@ -415,7 +410,6 @@ export default function NotebookWalker() {
         </div>
       )}
 
-      {/* Animated cat container */}
       <div
         className={bodyAnimClass}
         style={{
@@ -450,7 +444,6 @@ export default function NotebookWalker() {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Ground shadow */}
             <ellipse
               cx="58"
               cy="92"
@@ -459,7 +452,6 @@ export default function NotebookWalker() {
               fill="rgba(0, 0, 0, 0.44)"
             />
 
-            {/* Tail */}
             <path
               className={isMoving ? 'nw-tail-walk' : 'nw-tail-idle'}
               d="M28 64C14 60 10 42 19 31"
@@ -468,7 +460,6 @@ export default function NotebookWalker() {
               strokeLinecap="round"
             />
 
-            {/* Hind legs */}
             <rect
               className={isMoving ? 'nw-leg-a' : ''}
               x="31"
@@ -488,7 +479,6 @@ export default function NotebookWalker() {
               fill={CAT_PALETTE.coatMid}
             />
 
-            {/* Front legs */}
             <rect
               className={isMoving ? 'nw-leg-b' : ''}
               x="64"
@@ -508,7 +498,6 @@ export default function NotebookWalker() {
               fill={CAT_PALETTE.coatLight}
             />
 
-            {/* Torso */}
             <rect
               x="28"
               y="47"
@@ -518,7 +507,6 @@ export default function NotebookWalker() {
               fill={CAT_PALETTE.coatMid}
             />
 
-            {/* Subtle gold collar accent */}
             <path
               d="M74 48C78 52 78 64 74 70"
               stroke={CAT_PALETTE.collarGold}
@@ -526,14 +514,12 @@ export default function NotebookWalker() {
               strokeLinecap="round"
             />
 
-            {/* Head */}
             <g
               className={isAlert ? 'nw-head-alert' : 'nw-head-idle'}
               style={{ transformOrigin: '82px 39px' }}
             >
               <circle cx="82" cy="39" r="16.5" fill={CAT_PALETTE.coatLight} />
 
-              {/* Left & right ears */}
               <path
                 d="M70 28L67 13L78 23Z"
                 fill={CAT_PALETTE.coatMid}
@@ -551,7 +537,6 @@ export default function NotebookWalker() {
                 fill={CAT_PALETTE.innerEar}
               />
 
-              {/* Eye (open, alert, or closed when sleeping) */}
               {isSleeping ? (
                 <path
                   d="M84 39Q87.5 41.5 91 39"
@@ -576,7 +561,6 @@ export default function NotebookWalker() {
                 </>
               )}
 
-              {/* Nose & whiskers */}
               <path
                 d="M96.5 41L93.5 43.5L97.5 44.5Z"
                 fill={CAT_PALETTE.innerEar}
@@ -592,7 +576,6 @@ export default function NotebookWalker() {
         )}
       </div>
 
-      {/* Infinite CSS animations */}
       <style jsx>{`
         .nw-cat-walk {
           animation: nwWalkBob 0.56s ease-in-out infinite;
