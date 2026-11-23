@@ -6,6 +6,54 @@ const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 const GEMINI_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const ADMIN_PASS = '20090401';
 
+const MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+
+async function callGeminiWithFallback(contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>) {
+  let lastError = 'Gemini API error';
+
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const aiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_KEY,
+          },
+          body: JSON.stringify({ contents }),
+        }
+      );
+
+      const aiData = await aiRes.json();
+      if (aiRes.ok) {
+        return aiData;
+      }
+
+      const msg = String(aiData?.error?.message || `Gemini API error (${aiRes.status})`);
+      lastError = msg;
+
+      const isOverloaded =
+        aiRes.status === 429 ||
+        aiRes.status === 503 ||
+        /high demand|overloaded|unavailable|quota|capacity/i.test(msg);
+
+      if (isOverloaded && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 800));
+        continue;
+      }
+
+      if (isOverloaded) {
+        break;
+      }
+
+      throw new Error(msg);
+    }
+  }
+
+  throw new Error(lastError);
+}
+
 async function sb(path: string, options: RequestInit = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
@@ -92,22 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      const aiRes = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': GEMINI_KEY,
-          },
-          body: JSON.stringify({ contents }),
-        }
-      );
-
-      const aiData = await aiRes.json();
-      if (!aiRes.ok) {
-        throw new Error(aiData?.error?.message || `Gemini API error (${aiRes.status})`);
-      }
+      const aiData = await callGeminiWithFallback(contents);
 
       const reply =
         aiData?.candidates?.at(0)?.content?.parts?.at(0)?.text ||
