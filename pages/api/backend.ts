@@ -38,11 +38,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'GEMINI_API_KEY is missing in environment variables.' });
       }
 
-      const msgs = Array.isArray(body.messages) ? body.messages : [];
-      const lastUserMsg = msgs.at(-1)?.content || '';
-      const history = msgs.slice(0, -1).slice(-10);
+      const rawMsgs = Array.isArray(body.messages) ? body.messages : [];
+      const cleanMsgs = rawMsgs
+        .map((m: any) => ({
+          role: m?.role === 'assistant' ? 'model' : 'user',
+          text: String(m?.content ?? m?.text ?? '').trim(),
+        }))
+        .filter((m: any) => m.text.length > 0);
 
-      const contents = [
+      let lastUserText = '';
+      if (cleanMsgs.length > 0 && cleanMsgs.at(-1)?.role === 'user') {
+        lastUserText = cleanMsgs.at(-1)!.text;
+      } else {
+        lastUserText = String(body.message || body.prompt || '').trim() || 'Hello';
+      }
+
+      const historyMsgs =
+        cleanMsgs.length > 0 && cleanMsgs.at(-1)?.role === 'user'
+          ? cleanMsgs.slice(0, -1).slice(-10)
+          : cleanMsgs.slice(-10);
+
+      const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [
         {
           role: 'user',
           parts: [
@@ -55,12 +71,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           role: 'model',
           parts: [{ text: 'Understood. I will answer strictly as Farhan’s assistant using only these facts.' }],
         },
-        ...history.map((m: any) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: String(m.content || '') }],
-        })),
-        { role: 'user', parts: [{ text: String(lastUserMsg) }] },
       ];
+
+      for (const item of historyMsgs) {
+        const prevRole = contents.at(-1)?.role;
+        if (prevRole !== item.role) {
+          contents.push({
+            role: item.role,
+            parts: [{ text: item.text }],
+          });
+        }
+      }
+
+      if (contents.at(-1)?.role === 'user') {
+        contents.at(-1)!.parts[0].text = `${contents.at(-1)!.parts[0].text}\n\n${lastUserText}`.trim();
+      } else {
+        contents.push({
+          role: 'user',
+          parts: [{ text: lastUserText }],
+        });
+      }
 
       const aiRes = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
@@ -85,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (body.sessionId) {
         const savedMessages = [
-          ...msgs,
+          ...rawMsgs,
           { role: 'assistant', content: reply, createdAt: new Date().toISOString() },
         ].slice(-50);
 
