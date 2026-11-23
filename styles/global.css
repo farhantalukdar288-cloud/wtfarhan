@@ -1724,3 +1724,211 @@ body {
     transform: translateY(-4px) scale(1.01);
   }
 }
+/* ==========================================================================
+   35. HERO ACCENT VARIATIONS, EDITORIAL HEADLINES & AMBIENT LAYERS
+   ========================================================================== */
+.aesthetic-hero-sub {
+  margin: 0.9rem 0 0;
+  max-width: 62ch;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.68;
+  color: var(--text-secondary);
+}
+
+.aesthetic-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.aesthetic-hero-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.aesthetic-hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: -12% -6%;
+  z-index: -1;
+  border-radius: 36px;
+  background: radial-gradient(
+    ellipse at 25% 25%,
+    rgba(214, 184, 122, 0.14),
+    rgba(159, 184, 108, 0.08) 45%,
+    transparent 75%
+  );
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   36. NUMBERED CARDS (01 - 06) DISTINCT ACCENTS & HOVER ELEVATION
+   ========================================================================== */
+.aesthetic-card-01 {
+  border-top: 2px solid rgba(214, 184, 122, 0.45);
+}
+
+.aesthetic-card-02 {
+  border-top: 2px solid rgba(159, 184, 108, 0.45);
+}
+
+.aesthetic-card-03 {
+  border-top: 2px solid rgba(214, 184, 122, 0.35);
+}
+
+.aesthetic-card-04 {
+  border-top: 2px solid rgba(159, 184, 108, 0.38);
+}
+
+.aesthetic-card-05 {
+  border-top: 2px solid rgba(214, 184, 122, 0.42);
+}
+
+.aesthetic-card-06 {
+  border-top: 2px solid rgba(159, 184, 108, 0.42);
+}
+
+.aesthetic-card-footer {
+  margin-top: 1.15rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* ==========================================================================
+   37. FORM VALIDATION STATES, HELPER HINTS & INLINE FEEDBACK
+   ========================================================================== */
+.aesthetic-help-text {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.aesthetic-help-error {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #e68a7a;
+}
+
+.aesthetic-help-success {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--accent-olive);
+}
+
+.aesthetic-input-error,
+.aesthetic-textarea-error {
+  border-color: rgba(230, 138, 122, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(230, 138, 122, 0.14) !important;
+}
+
+.aesthetic-input-success,
+.aesthetic-textarea-success {
+  border-color: rgba(159, 184, 108, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(159, 184, 108, 0.14) !important;
+}
+
+/* ==========================================================================
+   38. GLASSMORPHISM LAYERS, FROSTED BORDERS & SUBTLE HIGHLIGHTS
+   ========================================================================== */
+.aesthetic-frosted-card {
+  background: rgba(14, 24, 18, 0.58);
+  border: 1px solid rgba(238, 241, 236, 0.11);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-soft);
+  transition:
+    background-color var(--duration-med) var(--ease-silk),
+    border-color var(--duration-med) var(--ease-silk),
+    transform var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-frosted-card:hover {
+  background: rgba(18, 30, 23, 0.76);
+  border-color: rgba(214, 184, 122, 0.36);
+  transform: translateY(-3px);
+}
+
+.aesthetic-inset-well {
+  background: rgba(5, 9, 7, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.1rem;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* ==========================================================================
+   39. EXTENDED KEYFRAMES, STAGGER DELAYS & MOTION POLISH
+   ========================================================================== */
+.anim-delay-1 { animation-delay: 80ms; }
+.anim-delay-2 { animation-delay: 160ms; }
+.anim-delay-3 { animation-delay: 240ms; }
+.anim-delay-4 { animation-delay: 320ms; }
+.anim-delay-5 { animation-delay: 400ms; }
+.anim-delay-6 { animation-delay: 480ms; }
+
+.anim-float-slow-alt {
+  animation: aestheticFloatSlowAlt 7.4s var(--ease-silk) infinite;
+}
+
+.anim-gold-shimmer {
+  animation: aestheticGoldShimmer 5.2s var(--ease-silk) infinite;
+}
+
+.anim-scale-breathe {
+  animation: aestheticScaleBreathe 4.8s ease-in-out infinite;
+}
+
+@keyframes aestheticFloatSlowAlt {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(-0.6deg);
+  }
+}
+
+@keyframes aestheticGoldShimmer {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(214, 184, 122, 0);
+  }
+  50% {
+    box-shadow: 0 0 28px 3px rgba(214, 184, 122, 0.22);
+  }
+}
+
+@keyframes aestheticScaleBreathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.018);
+  }
+}
+
+/* ==========================================================================
+   40. RESPONSIVE TUNING ACROSS VIEWPORTS
+   ========================================================================== */
+@media (max-width: 640px) {
+  .aesthetic-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .aesthetic-frosted-card {
+    border-radius: var(--radius-md);
+    padding: 1.1rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .aesthetic-shell {
+    max-width: 1280px;
+  }
+}
