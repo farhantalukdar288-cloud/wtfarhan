@@ -243,7 +243,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const notes = rows
         .filter((r: any) => r.key.startsWith('note:'))
         .map((r: any) => r.value)
-        .sort((a: any, b: any) changes) => b.createdAt.localeCompare(a.createdAt));
+        .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
       const sessions = rows
         .filter((r: any) => r.key.startsWith('chat:'))
         .map((r: any) => r.value)
