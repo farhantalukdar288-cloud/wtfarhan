@@ -2247,3 +2247,177 @@ body {
 .aesthetic-scroll-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(214, 184, 122, 0.5);
 }
+/* ==========================================================================
+   47. STAT CARDS, METRIC COUNTERS & COMPACT SUMMARY STRIPS
+   ========================================================================== */
+.aesthetic-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.3rem;
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color var(--duration-med) var(--ease-silk),
+    transform var(--duration-med) var(--ease-silk);
+}
+
+.aesthetic-stat-card:hover {
+  border-color: var(--border-gold);
+  transform: translateY(-3px);
+}
+
+.aesthetic-stat-value {
+  font-size: clamp(1.5rem, 3vw, 2.15rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--accent-gold);
+}
+
+.aesthetic-stat-label {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.aesthetic-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.9rem 1.2rem;
+  border-radius: var(--radius-lg);
+  background: rgba(14, 24, 18, 0.72);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   48. EDITORIAL CALLOUT BANNERS, EPIGRAPHS & SUBTLE DIVIDERS
+   ========================================================================== */
+.aesthetic-epigraph {
+  margin-block: 1.5rem;
+  padding: 1.1rem 1.4rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    rgba(214, 184, 122, 0.08),
+    rgba(159, 184, 108, 0.04) 65%,
+    transparent
+  );
+  border-left: 3px solid var(--accent-gold);
+  color: var(--text-primary);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.aesthetic-epigraph-cite {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent-olive);
+}
+
+.aesthetic-rule-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  opacity: 0.75;
+}
+
+/* ==========================================================================
+   49. EXTRA OPACITY, BORDER & DIMENSION UTILITIES
+   ========================================================================== */
+.border-gold-subtle {
+  border-color: var(--border-gold) !important;
+}
+
+.border-olive-subtle {
+  border-color: rgba(159, 184, 108, 0.32) !important;
+}
+
+.bg-pine-card {
+  background: var(--bg-card) !important;
+}
+
+.bg-pine-elevated {
+  background: var(--bg-pine-elevated) !important;
+}
+
+.min-h-screen-soft {
+  min-height: 75vh;
+}
+
+/* ==========================================================================
+   50. FINAL KEYFRAME POLISH, REDUCED MOTION & CONTRAST SAFETY
+   ========================================================================== */
+.anim-lantern-glow {
+  animation: aestheticLanternGlow 5s ease-in-out infinite;
+}
+
+.anim-drift-vertical {
+  animation: aestheticDriftVertical 6.2s var(--ease-silk) infinite;
+}
+
+@keyframes aestheticLanternGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(214, 184, 122, 0.14), inset 0 0 8px rgba(214, 184, 122, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(214, 184, 122, 0.28), inset 0 0 14px rgba(159, 184, 108, 0.1);
+  }
+}
+
+@keyframes aestheticDriftVertical {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-stagger-1,
+  .anim-stagger-2,
+  .anim-stagger-3,
+  .anim-stagger-4,
+  .anim-stagger-5,
+  .anim-stagger-6,
+  .anim-float-slow,
+  .anim-pulse-gold,
+  .anim-shimmer-line,
+  .anim-breathe-border,
+  .anim-drift-left,
+  .anim-drift-right,
+  .anim-pop-in,
+  .anim-gentle-tilt,
+  .anim-soft-glow,
+  .anim-float-gentle,
+  .anim-glow-ring,
+  .anim-pulse-olive,
+  .anim-rise-soft,
+  .anim-fade-in,
+  .anim-float-orb,
+  .anim-sway-soft,
+  .anim-pulse-subtle,
+  .anim-breathe-gold,
+  .anim-float-card,
+  .anim-orbit-glow,
+  .anim-wave-soft,
+  .anim-float-slow-alt,
+  .anim-gold-shimmer,
+  .anim-scale-breathe,
+  .anim-glide-up,
+  .anim-pulse-halo,
+  .anim-lantern-glow,
+  .anim-drift-vertical {
+    animation: none !important;
+    transition: none !important;
+  }
+}
