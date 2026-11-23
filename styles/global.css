@@ -2421,3 +2421,59 @@ body {
     transition: none !important;
   }
 }
+/* ==========================================================================
+   GLOBAL THEME OVERRIDES (PINE-DARK, WARM GOLD & OLIVE)
+   ========================================================================== */
+:root {
+  --bg-main: #080d0a;
+  --bg-surface: #0e1712;
+  --bg-surface-hover: #142119;
+  --text-main: #eef1ec;
+  --text-muted: #a6b2a9;
+  --accent-gold: #d6b87a;
+  --accent-olive: #9fb86c;
+  --border-soft: rgba(214, 184, 122, 0.22);
+}
+
+html,
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   2-COLUMN SIDE-BY-SIDE LAYOUT (1 COLUMN ON SMALL SCREENS)
+   ========================================================================== */
+.two-col-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .two-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   SOFT ROUNDED CORNERS FOR SECTIONS & CARDS
+   ========================================================================== */
+.rounded-section-card {
+  border-radius: 20px;
+  padding: 20px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.rounded-section-card:hover {
+  transform: translateY(-3px);
+  background-color: var(--bg-surface-hover);
+  border-color: rgba(214, 184, 122, 0.45);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+}
