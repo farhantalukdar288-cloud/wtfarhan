@@ -38,10 +38,8 @@ export default function NotebookWalker() {
   const [isNoticingVisitor, setIsNoticingVisitor] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // স্ক্রিনের ভেতর হাঁটা ও মাঝে মাঝে থেমে ভিজিটরের দিকে তাকানো
   useEffect(() => {
     let moveTimer: ReturnType<typeof setTimeout>;
-    let stepInterval: ReturnType<typeof setInterval>;
 
     const pickNextSpot = () => {
       if (typeof window === 'undefined') return;
@@ -53,7 +51,9 @@ export default function NotebookWalker() {
       const maxY = Math.max(pad + 60, window.innerHeight - charH - pad);
 
       const targetX = Math.floor(pad + Math.random() * (maxX - pad));
-      const targetY = Math.floor(pad + 60 + Math.random() * (maxY - (pad + 60)));
+      const targetY = Math.floor(
+        pad + 60 + Math.random() * (maxY - (pad + 60))
+      );
 
       setPos((prev) => {
         setFacing(targetX >= prev.x ? 'right' : 'left');
@@ -62,7 +62,6 @@ export default function NotebookWalker() {
       setIsWalking(true);
       setIsNoticingVisitor(false);
 
-      // কিছুক্ষণ হাঁটার পর থেমে মাঝে মাঝে ভিজিটরের দিকে মনোযোগ দেওয়া
       const walkDuration = 2800 + Math.random() * 2400;
       moveTimer = setTimeout(() => {
         setIsWalking(false);
@@ -74,10 +73,8 @@ export default function NotebookWalker() {
       }, walkDuration);
     };
 
-    // প্রথম লোডে একটু পর হাঁটা শুরু হবে
     moveTimer = setTimeout(pickNextSpot, 900);
 
-    // পয়েন্টার/টাচ করলে মাঝে মাঝে স্বাভাবিকভাবে খেয়াল করার অনুভূতি
     const handlePointer = () => {
       if (Math.random() < 0.22) {
         setIsNoticingVisitor(true);
@@ -86,18 +83,13 @@ export default function NotebookWalker() {
     };
 
     window.addEventListener('pointerdown', handlePointer, { passive: true });
-    stepInterval = setInterval(() => {
-      // keep alive hook if needed
-    }, 10000);
 
     return () => {
       clearTimeout(moveTimer);
-      clearInterval(stepInterval);
       window.removeEventListener('pointerdown', handlePointer);
     };
   }, []);
 
-  // মাঝে মাঝে শান্ত সিনেম্যাটিক মেসেজ দেখানো (সবসময় নয়, মাঝে মাঝে চুপ থাকবে)
   useEffect(() => {
     let showTimer: ReturnType<typeof setTimeout>;
     let hideTimer: ReturnType<typeof setTimeout>;
@@ -105,8 +97,7 @@ export default function NotebookWalker() {
     const scheduleMessage = () => {
       const delayBeforeShow = 5500 + Math.random() * 6500;
       showTimer = setTimeout(() => {
-        const pool =
-          SECTION_LINES[router.pathname] || QUIET_LINES;
+        const pool = SECTION_LINES[router.pathname] || QUIET_LINES;
         const combined = [...pool, ...QUIET_LINES];
         const nextLine =
           combined[Math.floor(Math.random() * combined.length)];
@@ -165,7 +156,6 @@ export default function NotebookWalker() {
           'left 2.8s cubic-bezier(0.22, 1, 0.36, 1), top 2.8s cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
-      {/* শান্ত মেসেজ বাবল */}
       {message && (
         <div
           style={{
@@ -193,7 +183,6 @@ export default function NotebookWalker() {
         </div>
       )}
 
-      {/* The Notebook Movie-Inspired ফুল-বডি ক্যারেক্টার */}
       <div
         className={isWalking ? 'nb-walk-bob' : 'nb-idle-breathe'}
         style={{
@@ -210,7 +199,6 @@ export default function NotebookWalker() {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* মাটিতে নরম শ্যাডো */}
           <ellipse
             cx="48"
             cy="161"
@@ -219,7 +207,6 @@ export default function NotebookWalker() {
             fill="rgba(0, 0, 0, 0.42)"
           />
 
-          {/* বাম ও ডান পা (হাঁটার মুভমেন্ট) */}
           <g className={isWalking ? 'nb-leg-left' : ''}>
             <rect
               x="35"
@@ -258,11 +245,7 @@ export default function NotebookWalker() {
             />
           </g>
 
-          {/* ব্রাউন ট্রাউজার ও বেল্ট */}
-          <path
-            d="M33 94H63L61 112H35L33 94Z"
-            fill="#463123"
-          />
+          <path d="M33 94H63L61 112H35L33 94Z" fill="#463123" />
           <rect
             x="33"
             y="92"
@@ -280,19 +263,13 @@ export default function NotebookWalker() {
             fill="#c9a259"
           />
 
-          {/* হালকা অফ-হোয়াইট/লিনেন ক্যাজুয়াল শার্ট (হাতা গোটানো) */}
           <path
             d="M28 48C28 43 35 40 48 40C61 40 68 43 68 48L64 93H32L28 48Z"
             fill="#dfd9c8"
             stroke="#b8b09c"
             strokeWidth="1"
           />
-          {/* ভেতরের সাদা আন্ডার-শার্ট ভি-নেক */}
-          <path
-            d="M42 40L48 53L54 40"
-            fill="#f4f1ea"
-          />
-          {/* শার্টের কলার */}
+          <path d="M42 40L48 53L54 40" fill="#f4f1ea" />
           <path
             d="M39 40L44 48L48 43L52 48L57 40"
             stroke="#9e9582"
@@ -300,7 +277,6 @@ export default function NotebookWalker() {
             fill="none"
           />
 
-          {/* বাম হাত (পকেটের দিকে রাখা) */}
           <g className={isWalking ? 'nb-arm-left' : ''}>
             <path
               d="M29 48L23 74L33 94"
@@ -312,7 +288,6 @@ export default function NotebookWalker() {
             <circle cx="33" cy="95" r="4" fill="#d6ad8c" />
           </g>
 
-          {/* ডান হাত (পকেটের দিকে রাখা) */}
           <g className={isWalking ? 'nb-arm-right' : ''}>
             <path
               d="M67 48L73 74L63 94"
@@ -324,17 +299,8 @@ export default function NotebookWalker() {
             <circle cx="63" cy="95" r="4" fill="#d6ad8c" />
           </g>
 
-          {/* ঘাড় */}
-          <rect
-            x="43"
-            y="33"
-            width="10"
-            height="10"
-            rx="4"
-            fill="#d6ad8c"
-          />
+          <rect x="43" y="33" width="10" height="10" rx="4" fill="#d6ad8c" />
 
-          {/* মাথা ও স্বাভাবিক সিনেম্যাটিক মুখ */}
           <g
             style={{
               transform: isNoticingVisitor
@@ -344,7 +310,6 @@ export default function NotebookWalker() {
               transition: 'transform 0.35s ease',
             }}
           >
-            {/* মুখের অবয়ব */}
             <rect
               x="36"
               y="12"
@@ -354,14 +319,12 @@ export default function NotebookWalker() {
               fill="#deb696"
             />
 
-            {/* হালকা দাড়ি ও স্টাবল */}
             <path
               d="M37 25C37 33 41.5 38 48 38C54.5 38 59 33 59 25C57 31 53 35 48 35C43 35 39 31 37 25Z"
               fill="#8a6848"
               opacity="0.65"
             />
 
-            {/* স্বাভাবিক চোখ (ভিজিটরের দিকে তাকালে হালকা ফোকাস) */}
             <circle
               cx={isNoticingVisitor ? '43.5' : '42.5'}
               cy="23"
@@ -375,7 +338,6 @@ export default function NotebookWalker() {
               fill="#231a14"
             />
 
-            {/* স্বাভাবিক ভ্রু */}
             <path
               d="M39.5 19.5C41.5 18.8 43.5 19 45 19.8"
               stroke="#7c5d3f"
@@ -389,7 +351,6 @@ export default function NotebookWalker() {
               strokeLinecap="round"
             />
 
-            {/* হালকা স্বাভাবিক ঠোঁট */}
             <path
               d="M45.5 31C47 31.8 49 31.8 50.5 31"
               stroke="#8f644b"
@@ -397,7 +358,6 @@ export default function NotebookWalker() {
               strokeLinecap="round"
             />
 
-            {/* মাঝারি/অগোছালো চুল (The Notebook স্টাইল) */}
             <path
               d="M35 20C34.5 11 40 6 48.5 6C57 6 62 11 61 20C59.5 15 55 12 48 12C41 12 37 15 35 20Z"
               fill="#8f6b47"
@@ -410,7 +370,6 @@ export default function NotebookWalker() {
         </svg>
       </div>
 
-      {/* সিনেম্যাটিক ও নরম মুভমেন্ট অ্যানিমেশন */}
       <style jsx>{`
         .nb-idle-breathe {
           animation: nbBreathe 3.2s ease-in-out infinite;
